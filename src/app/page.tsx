@@ -1,9 +1,11 @@
 "use client"
 import { useState } from 'react'
 import { useTeamMembers, useProjects, useStats, useActivities } from '@/lib/hooks'
+import { useAuth } from '@/lib/auth'
 import { TeamMember, Project } from '@/lib/supabase'
 
 export default function Dashboard() {
+  const { user, loading: authLoading, signOut } = useAuth(true)
   const { members, loading: membersLoading } = useTeamMembers()
   const { projects, loading: projectsLoading } = useProjects()
   const { stats, loading: statsLoading } = useStats()
@@ -12,12 +14,33 @@ export default function Dashboard() {
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
 
+  if (authLoading) {
+    return (
+      <main className="min-h-screen bg-background-primary flex items-center justify-center">
+        <p className="text-white/60">Loading...</p>
+      </main>
+    )
+  }
+
+  if (!user) return null
+
   const loading = membersLoading || projectsLoading || statsLoading
   
   return (
     <main className="min-h-screen bg-background-primary p-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-white mb-8">🎯 Mission Control</h1>
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-3xl font-bold text-white">🎯 Mission Control</h1>
+          <div className="flex items-center gap-4">
+            <span className="text-white/60 text-sm">{user.email}</span>
+            <button
+              onClick={signOut}
+              className="text-white/40 hover:text-white text-sm transition-colors"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
         
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4 mb-8">
