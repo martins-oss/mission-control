@@ -15,6 +15,10 @@ export interface TeamMember {
   session_key?: string
   last_activity?: string
   created_at: string
+  // Agent documentation
+  soul_md?: string
+  agents_md?: string
+  tools_md?: string
 }
 
 export interface Project {

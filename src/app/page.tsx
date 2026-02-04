@@ -5,6 +5,8 @@ import { useTeamMembers, useProjects, useStats, useActivities } from '@/lib/hook
 import { useAuth } from '@/lib/auth'
 import { TeamMember, Project } from '@/lib/supabase'
 
+type DocTab = 'overview' | 'soul' | 'agents' | 'tools'
+
 export default function Dashboard() {
   const router = useRouter()
   const { user, loading: authLoading, signOut } = useAuth(true)
@@ -15,6 +17,7 @@ export default function Dashboard() {
   
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
+  const [docTab, setDocTab] = useState<DocTab>('overview')
 
   if (authLoading) {
     return (
@@ -70,7 +73,7 @@ export default function Dashboard() {
               members.map((member) => (
                 <div 
                   key={member.id} 
-                  onClick={() => { setSelectedMember(member); setSelectedProject(null) }}
+                  onClick={() => { setSelectedMember(member); setSelectedProject(null); setDocTab('overview') }}
                   className={"bg-white/5 rounded-xl p-4 border text-center cursor-pointer transition-all hover:bg-white/10 " + 
                     (selectedMember?.id === member.id ? 'border-accent ring-1 ring-accent' : 'border-white/10')}
                 >
@@ -151,20 +154,70 @@ export default function Dashboard() {
           <div className="col-span-1">
             {selectedMember && (
               <div className="bg-white/5 rounded-xl border border-white/10 p-6">
-                <div className="text-4xl mb-2">{selectedMember.emoji}</div>
-                <h3 className="text-white text-xl font-bold">{selectedMember.name}</h3>
-                <p className="text-white/60 text-sm mb-4">{selectedMember.role}</p>
-                <div className={"inline-block px-2 py-0.5 rounded text-xs mb-4 " + (
-                  selectedMember.status === 'active' ? 'bg-green-500/20 text-green-400' : 
-                  selectedMember.status === 'idle' ? 'bg-yellow-500/20 text-yellow-400' : 
-                  'bg-white/10 text-white/40'
-                )}>{selectedMember.status}</div>
-                {selectedMember.last_activity && (
-                  <div className="border-t border-white/10 pt-4 mt-4">
-                    <p className="text-white/40 text-xs uppercase mb-2">Last Active</p>
-                    <p className="text-white text-sm">{new Date(selectedMember.last_activity).toLocaleString()}</p>
+                {/* Header */}
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <div className="text-4xl mb-2">{selectedMember.emoji}</div>
+                    <h3 className="text-white text-xl font-bold">{selectedMember.name}</h3>
+                    <p className="text-white/60 text-sm">{selectedMember.role}</p>
                   </div>
-                )}
+                  <div className={"px-2 py-0.5 rounded text-xs " + (
+                    selectedMember.status === 'active' ? 'bg-green-500/20 text-green-400' : 
+                    selectedMember.status === 'idle' ? 'bg-yellow-500/20 text-yellow-400' : 
+                    'bg-white/10 text-white/40'
+                  )}>{selectedMember.status}</div>
+                </div>
+
+                {/* Tabs */}
+                <div className="flex gap-1 mb-4 border-b border-white/10 pb-2">
+                  {(['overview', 'soul', 'agents', 'tools'] as DocTab[]).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setDocTab(tab)}
+                      className={"px-3 py-1 rounded text-xs transition-colors " + (
+                        docTab === tab 
+                          ? 'bg-accent text-black' 
+                          : 'text-white/60 hover:text-white hover:bg-white/10'
+                      )}
+                    >
+                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Tab Content */}
+                <div className="min-h-[200px] max-h-[400px] overflow-y-auto">
+                  {docTab === 'overview' && (
+                    <div>
+                      {selectedMember.last_activity && (
+                        <div className="mb-4">
+                          <p className="text-white/40 text-xs uppercase mb-1">Last Active</p>
+                          <p className="text-white text-sm">{new Date(selectedMember.last_activity).toLocaleString()}</p>
+                        </div>
+                      )}
+                      <p className="text-white/40 text-sm">
+                        Click the tabs above to view {selectedMember.name}&apos;s documentation.
+                      </p>
+                    </div>
+                  )}
+                  {docTab === 'soul' && (
+                    <div className="text-white/80 text-sm whitespace-pre-wrap font-mono">
+                      {selectedMember.soul_md || 'No SOUL.md available'}
+                    </div>
+                  )}
+                  {docTab === 'agents' && (
+                    <div className="text-white/80 text-sm whitespace-pre-wrap font-mono">
+                      {selectedMember.agents_md || 'No AGENTS.md available'}
+                    </div>
+                  )}
+                  {docTab === 'tools' && (
+                    <div className="text-white/80 text-sm whitespace-pre-wrap font-mono">
+                      {selectedMember.tools_md || 'No TOOLS.md available'}
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
                 <button 
                   onClick={() => openChat(selectedMember.name)}
                   className="w-full mt-4 bg-accent hover:bg-accent/80 text-black font-medium py-2 px-4 rounded-lg transition-colors"
