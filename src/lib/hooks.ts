@@ -1,138 +1,196 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase, TeamMember, Project, Activity, Alert } from './supabase'
 
 export function useTeamMembers() {
   const [members, setMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    // Initial fetch
-    supabase
+  const fetchMembers = useCallback(async () => {
+    const { data } = await supabase
       .from('team_members')
       .select('*')
       .order('name')
-      .then(({ data }) => {
-        if (data) setMembers(data)
-        setLoading(false)
-      })
+    if (data) setMembers(data)
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    fetchMembers()
 
     // Real-time subscription
     const channel = supabase
       .channel('team_members_changes')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'team_members' },
-        (payload) => {
-          if (payload.eventType === 'UPDATE') {
-            setMembers(prev => prev.map(m => 
-              m.id === payload.new.id ? payload.new as TeamMember : m
-            ))
-          }
-        }
+        () => fetchMembers()
       )
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
-  }, [])
+    // Refresh every 30s
+    const interval = setInterval(fetchMembers, 30000)
 
-  return { members, loading }
+    return () => { 
+      supabase.removeChannel(channel) 
+      clearInterval(interval)
+    }
+  }, [fetchMembers])
+
+  return { members, loading, refresh: fetchMembers }
 }
 
 export function useProjects() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    // Fetch projects with owner and task counts
-    async function fetchProjects() {
-      const { data: projectsData } = await supabase
-        .from('projects')
-        .select(`
-          *,
-          owner:team_members(*)
-        `)
-        .order('priority', { ascending: false })
-        .order('created_at', { ascending: false })
+  const fetchProjects = useCallback(async () => {
+    const { data: projectsData } = await supabase
+      .from('projects')
+      .select(`
+        *,
+        owner:team_members(*)
+      `)
+      .order('priority', { ascending: false })
+      .order('created_at', { ascending: false })
 
-      if (projectsData) {
-        // Get task counts for each project
-        const projectsWithCounts = await Promise.all(
-          projectsData.map(async (p) => {
-            const { count: taskCount } = await supabase
-              .from('tasks')
-              .select('*', { count: 'exact', head: true })
-              .eq('project_id', p.id)
-            
-            const { count: doneCount } = await supabase
-              .from('tasks')
-              .select('*', { count: 'exact', head: true })
-              .eq('project_id', p.id)
-              .eq('status', 'done')
+    if (projectsData) {
+      const projectsWithCounts = await Promise.all(
+        projectsData.map(async (p) => {
+          const { count: taskCount } = await supabase
+            .from('tasks')
+            .select('*', { count: 'exact', head: true })
+            .eq('project_id', p.id)
+          
+          const { count: doneCount } = await supabase
+            .from('tasks')
+            .select('*', { count: 'exact', head: true })
+            .eq('project_id', p.id)
+            .eq('status', 'done')
 
-            return {
-              ...p,
-              task_count: taskCount || 0,
-              done_count: doneCount || 0
-            }
-          })
-        )
-        setProjects(projectsWithCounts)
-      }
-      setLoading(false)
+          return {
+            ...p,
+            task_count: taskCount || 0,
+            done_count: doneCount || 0
+          }
+        })
+      )
+      setProjects(projectsWithCounts)
     }
+    setLoading(false)
+  }, [])
 
+  useEffect(() => {
     fetchProjects()
 
-    // Real-time subscription
     const channel = supabase
       .channel('projects_changes')
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'projects' },
-        () => { fetchProjects() }
+        () => fetchProjects()
       )
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
-  }, [])
+    const interval = setInterval(fetchProjects, 30000)
 
-  return { projects, loading }
+    return () => { 
+      supabase.removeChannel(channel) 
+      clearInterval(interval)
+    }
+  }, [fetchProjects])
+
+  return { projects, loading, refresh: fetchProjects }
+}
+
+interface ChatActivity {
+  id: string
+  agent_id: string
+  role: 'user' | 'assistant'
+  content: string
+  created_at: string
+  team_member?: TeamMember
 }
 
 export function useActivities(limit = 20) {
-  const [activities, setActivities] = useState<Activity[]>([])
+  const [activities, setActivities] = useState<(Activity | ChatActivity)[]>([])
   const [loading, setLoading] = useState(true)
 
+  const fetchActivities = useCallback(async () => {
+    // Fetch from activities table
+    const { data: activityData } = await supabase
+      .from('activities')
+      .select(`
+        *,
+        team_member:team_members(*),
+        project:projects(*)
+      `)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+
+    // Also fetch recent chat messages as activity
+    const { data: chatData } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit)
+
+    // Get team members for chat messages
+    const { data: members } = await supabase
+      .from('team_members')
+      .select('*')
+
+    const memberMap = new Map(members?.map(m => [m.name.toLowerCase(), m]) || [])
+
+    // Transform chat messages into activity format
+    const chatActivities: ChatActivity[] = (chatData || []).map(msg => ({
+      id: msg.id,
+      agent_id: msg.agent_id,
+      role: msg.role,
+      content: msg.content,
+      created_at: msg.created_at,
+      team_member: memberMap.get(msg.agent_id)
+    }))
+
+    // Combine and sort by date
+    const combined = [...(activityData || []), ...chatActivities]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, limit)
+
+    setActivities(combined)
+    setLoading(false)
+  }, [limit])
+
   useEffect(() => {
-    async function fetchActivities() {
-      const { data } = await supabase
-        .from('activities')
-        .select(`
-          *,
-          team_member:team_members(*),
-          project:projects(*)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(limit)
-
-      if (data) setActivities(data)
-      setLoading(false)
-    }
-
     fetchActivities()
 
-    // Real-time subscription
-    const channel = supabase
+    // Real-time subscription for activities
+    const activityChannel = supabase
       .channel('activities_changes')
       .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'activities' },
-        () => { fetchActivities() }
+        () => fetchActivities()
       )
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
-  }, [limit])
+    // Real-time subscription for chat messages
+    const chatChannel = supabase
+      .channel('chat_messages_changes')
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+        () => fetchActivities()
+      )
+      .subscribe()
 
-  return { activities, loading }
+    // Refresh every 15 seconds
+    const interval = setInterval(fetchActivities, 15000)
+
+    return () => { 
+      supabase.removeChannel(activityChannel)
+      supabase.removeChannel(chatChannel)
+      clearInterval(interval)
+    }
+  }, [fetchActivities])
+
+  return { activities, loading, refresh: fetchActivities }
 }
 
 export function useAlerts() {
@@ -156,7 +214,6 @@ export function useAlerts() {
 
     fetchAlerts()
 
-    // Real-time subscription
     const channel = supabase
       .channel('alerts_changes')
       .on('postgres_changes',
@@ -181,37 +238,83 @@ export function useStats() {
     active: 0,
     blocked: 0,
     done: 0,
-    todayCost: 0
+    todayCost: 0,
+    totalMessages: 0
   })
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    async function fetchStats() {
-      // Task counts by status
-      const [activeRes, blockedRes, doneRes, costRes] = await Promise.all([
-        supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('status', 'in_progress'),
-        supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('status', 'blocked'),
-        supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('status', 'done'),
-        supabase.from('daily_costs').select('cost_usd').eq('date', new Date().toISOString().split('T')[0])
-      ])
+  const fetchStats = useCallback(async () => {
+    const today = new Date().toISOString().split('T')[0]
+    
+    const [activeRes, blockedRes, doneRes, costRes, messagesRes] = await Promise.all([
+      supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('status', 'in_progress'),
+      supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('status', 'blocked'),
+      supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('status', 'done'),
+      supabase.from('daily_costs').select('cost_usd').eq('date', today),
+      supabase.from('chat_messages').select('*', { count: 'exact', head: true }).gte('created_at', today + 'T00:00:00')
+    ])
 
-      const todayCost = costRes.data?.reduce((sum, c) => sum + Number(c.cost_usd), 0) || 0
+    const todayCost = costRes.data?.reduce((sum, c) => sum + Number(c.cost_usd), 0) || 0
 
-      setStats({
-        active: activeRes.count || 0,
-        blocked: blockedRes.count || 0,
-        done: doneRes.count || 0,
-        todayCost
-      })
-      setLoading(false)
-    }
-
-    fetchStats()
-
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchStats, 30000)
-    return () => clearInterval(interval)
+    setStats({
+      active: activeRes.count || 0,
+      blocked: blockedRes.count || 0,
+      done: doneRes.count || 0,
+      todayCost,
+      totalMessages: messagesRes.count || 0
+    })
+    setLoading(false)
   }, [])
 
-  return { stats, loading }
+  useEffect(() => {
+    fetchStats()
+
+    // Refresh every 15 seconds
+    const interval = setInterval(fetchStats, 15000)
+    return () => clearInterval(interval)
+  }, [fetchStats])
+
+  return { stats, loading, refresh: fetchStats }
+}
+
+// Hook for chat messages
+export function useChatMessages(agentId: string | null) {
+  const [messages, setMessages] = useState<ChatActivity[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchMessages = useCallback(async () => {
+    if (!agentId) {
+      setMessages([])
+      setLoading(false)
+      return
+    }
+
+    const { data } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .eq('agent_id', agentId)
+      .order('created_at', { ascending: true })
+      .limit(100)
+
+    if (data) setMessages(data)
+    setLoading(false)
+  }, [agentId])
+
+  useEffect(() => {
+    fetchMessages()
+
+    if (!agentId) return
+
+    const channel = supabase
+      .channel(`chat_${agentId}`)
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `agent_id=eq.${agentId}` },
+        () => fetchMessages()
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [agentId, fetchMessages])
+
+  return { messages, loading, refresh: fetchMessages }
 }

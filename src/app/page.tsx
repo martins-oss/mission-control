@@ -199,11 +199,12 @@ export default function Dashboard() {
         </div>
         
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-5 gap-4 mb-8">
           {[
-            { label: 'Active', value: loading ? '...' : stats.active.toString(), color: 'text-blue-400' },
+            { label: 'Active Tasks', value: loading ? '...' : stats.active.toString(), color: 'text-blue-400' },
             { label: 'Blocked', value: loading ? '...' : stats.blocked.toString(), color: 'text-red-400' },
             { label: 'Done', value: loading ? '...' : stats.done.toString(), color: 'text-green-400' },
+            { label: 'Messages Today', value: loading ? '...' : (stats.totalMessages || 0).toString(), color: 'text-accent' },
             { label: 'Cost Today', value: loading ? '...' : `$${stats.todayCost.toFixed(2)}`, color: 'text-white' },
           ].map((stat) => (
             <div key={stat.label} className="bg-white/5 rounded-xl p-4 border border-white/10">
@@ -288,15 +289,43 @@ export default function Dashboard() {
               {activities.length === 0 ? (
                 <div className="text-white/40 text-sm">No recent activity</div>
               ) : (
-                activities.map((activity) => (
-                  <div key={activity.id} className="bg-white/5 rounded-lg p-3 border border-white/10">
-                    <div className="flex items-center gap-2">
-                      <span>{activity.team_member?.emoji}</span>
-                      <span className="text-white text-sm">{activity.team_member?.name}</span>
-                      <span className="text-white/40 text-sm">{activity.action}</span>
+                activities.map((activity) => {
+                  // Check if it's a chat message
+                  const isChat = 'role' in activity && 'content' in activity
+                  
+                  if (isChat) {
+                    const chatActivity = activity as { id: string; role: string; content: string; created_at: string; team_member?: TeamMember; agent_id: string }
+                    return (
+                      <div key={chatActivity.id} className="bg-white/5 rounded-lg p-3 border border-white/10">
+                        <div className="flex items-start gap-2">
+                          <span className="text-lg">{chatActivity.role === 'user' ? '👤' : (chatActivity.team_member?.emoji || '🤖')}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-white text-sm font-medium">
+                                {chatActivity.role === 'user' ? 'You' : (chatActivity.team_member?.name || chatActivity.agent_id)}
+                              </span>
+                              <span className="text-white/30 text-xs">
+                                {new Date(chatActivity.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <p className="text-white/60 text-sm truncate">{chatActivity.content.slice(0, 100)}{chatActivity.content.length > 100 ? '...' : ''}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  }
+                  
+                  // Regular activity
+                  return (
+                    <div key={activity.id} className="bg-white/5 rounded-lg p-3 border border-white/10">
+                      <div className="flex items-center gap-2">
+                        <span>{activity.team_member?.emoji}</span>
+                        <span className="text-white text-sm">{activity.team_member?.name}</span>
+                        <span className="text-white/40 text-sm">{(activity as Activity).action}</span>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  )
+                })
               )}
             </div>
           </div>
