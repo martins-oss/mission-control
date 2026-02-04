@@ -6,16 +6,18 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-const OPENCLAW_GATEWAY = process.env.OPENCLAW_GATEWAY_URL || 'http://iris-gateway:18788'
-const OPENCLAW_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN
+// Gateway accessed via Cloudflare Tunnel
+const GATEWAY_URL = process.env.GATEWAY_URL || 'https://gateway.dothework.fit'
+const GATEWAY_TOKEN = process.env.GATEWAY_TOKEN
 
-const agentLabels: Record<string, string> = {
-  iris: 'iris-main',
-  max: 'max-product',
-  nina: 'nina-growth',
-  blake: 'blake-investor',
-  eli: 'eli-content',
-  pixel: 'pixel-creative',
+// Agent IDs map to OpenClaw agent configurations
+const agentIds: Record<string, string> = {
+  iris: 'main',    // Iris is the main agent
+  max: 'max',
+  nina: 'nina',
+  blake: 'blake',
+  eli: 'eli',
+  pixel: 'pixel',
 }
 
 export async function POST(req: NextRequest) {
@@ -26,8 +28,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing agent or message' }, { status: 400 })
     }
 
-    const label = agentLabels[agent]
-    if (!label) {
+    const agentId = agentIds[agent]
+    if (!agentId) {
       return NextResponse.json({ error: 'Unknown agent' }, { status: 400 })
     }
 
@@ -38,30 +40,32 @@ export async function POST(req: NextRequest) {
       content: message
     })
 
-    // For now, return a placeholder response
-    // In production, this would call OpenClaw gateway to spawn/send to agent session
     let response = ''
     
-    if (OPENCLAW_TOKEN) {
+    if (GATEWAY_TOKEN) {
       try {
-        // Try to send to OpenClaw gateway
-        const res = await fetch(`${OPENCLAW_GATEWAY}/api/sessions/send`, {
+        // Use OpenAI-compatible chat completions endpoint
+        // Model format: "openclaw:<agentId>" routes to specific agent
+        const res = await fetch(`${GATEWAY_URL}/v1/chat/completions`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${OPENCLAW_TOKEN}`
+            'Authorization': `Bearer ${GATEWAY_TOKEN}`
           },
           body: JSON.stringify({
-            label,
-            message,
-            timeoutSeconds: 120
+            model: `openclaw:${agentId}`,
+            messages: [
+              { role: 'user', content: message }
+            ]
           })
         })
         
         if (res.ok) {
           const data = await res.json()
-          response = data.response || data.message || 'Agent is processing your request...'
+          response = data.choices?.[0]?.message?.content || 'Agent is processing your request...'
         } else {
+          const errorText = await res.text()
+          console.error('Gateway error:', res.status, errorText)
           response = `[${agent}] Agent session not available. Please try again later.`
         }
       } catch (err) {
@@ -69,7 +73,7 @@ export async function POST(req: NextRequest) {
         response = `[${agent}] I'm currently being set up. Check back soon!`
       }
     } else {
-      // Demo mode - return contextual responses
+      // Demo mode - return contextual responses when gateway not configured
       const responses: Record<string, string> = {
         iris: "I'm Iris, your orchestrator. I coordinate the team and keep everything running smoothly. How can I help?",
         max: "Hey! I'm Max, your product engineer. I handle the DO IT app, bug fixes, and feature development. What would you like me to build?",
