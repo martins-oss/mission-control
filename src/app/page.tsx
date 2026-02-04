@@ -1,10 +1,12 @@
 "use client"
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useTeamMembers, useProjects, useStats, useActivities } from '@/lib/hooks'
 import { useAuth } from '@/lib/auth'
 import { TeamMember, Project } from '@/lib/supabase'
 
 export default function Dashboard() {
+  const router = useRouter()
   const { user, loading: authLoading, signOut } = useAuth(true)
   const { members, loading: membersLoading } = useTeamMembers()
   const { projects, loading: projectsLoading } = useProjects()
@@ -25,6 +27,10 @@ export default function Dashboard() {
   if (!user) return null
 
   const loading = membersLoading || projectsLoading || statsLoading
+
+  const openChat = (name: string) => {
+    router.push(`/chat/${name.toLowerCase()}`)
+  }
   
   return (
     <main className="min-h-screen bg-background-primary p-8">
@@ -33,10 +39,7 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold text-white">🎯 Mission Control</h1>
           <div className="flex items-center gap-4">
             <span className="text-white/60 text-sm">{user.email}</span>
-            <button
-              onClick={signOut}
-              className="text-white/40 hover:text-white text-sm transition-colors"
-            >
+            <button onClick={signOut} className="text-white/40 hover:text-white text-sm transition-colors">
               Sign out
             </button>
           </div>
@@ -107,13 +110,10 @@ export default function Dashboard() {
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-white/40 text-sm">
-                        {project.done_count}/{project.task_count}
-                      </span>
+                      <span className="text-white/40 text-sm">{project.done_count}/{project.task_count}</span>
                       <span className={"px-2 py-0.5 rounded text-xs " + (
                         project.priority === 'high' || project.priority === 'critical' 
-                          ? 'bg-red-500/20 text-red-400' 
-                          : 'bg-white/10 text-white/60'
+                          ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-white/60'
                       )}>{project.priority}</span>
                       <span className={"px-2 py-0.5 rounded text-xs " + (
                         project.status === 'active' ? 'bg-blue-500/20 text-blue-400' :
@@ -141,9 +141,6 @@ export default function Dashboard() {
                       <span className="text-white text-sm">{activity.team_member?.name}</span>
                       <span className="text-white/40 text-sm">{activity.action}</span>
                     </div>
-                    <div className="text-white/30 text-xs mt-1">
-                      {new Date(activity.created_at).toLocaleTimeString()}
-                    </div>
                   </div>
                 ))
               )}
@@ -165,12 +162,13 @@ export default function Dashboard() {
                 {selectedMember.last_activity && (
                   <div className="border-t border-white/10 pt-4 mt-4">
                     <p className="text-white/40 text-xs uppercase mb-2">Last Active</p>
-                    <p className="text-white text-sm">
-                      {new Date(selectedMember.last_activity).toLocaleString()}
-                    </p>
+                    <p className="text-white text-sm">{new Date(selectedMember.last_activity).toLocaleString()}</p>
                   </div>
                 )}
-                <button className="w-full mt-4 bg-accent hover:bg-accent/80 text-black font-medium py-2 px-4 rounded-lg transition-colors">
+                <button 
+                  onClick={() => openChat(selectedMember.name)}
+                  className="w-full mt-4 bg-accent hover:bg-accent/80 text-black font-medium py-2 px-4 rounded-lg transition-colors"
+                >
                   Open Chat
                 </button>
               </div>
@@ -178,17 +176,14 @@ export default function Dashboard() {
             {selectedProject && (
               <div className="bg-white/5 rounded-xl border border-white/10 p-6">
                 <h3 className="text-white text-xl font-bold mb-1">{selectedProject.name}</h3>
-                <p className="text-white/60 text-sm mb-2">
-                  {selectedProject.owner?.emoji} {selectedProject.owner?.name}
-                </p>
+                <p className="text-white/60 text-sm mb-2">{selectedProject.owner?.emoji} {selectedProject.owner?.name}</p>
                 {selectedProject.description && (
                   <p className="text-white/40 text-sm mb-4">{selectedProject.description}</p>
                 )}
                 <div className="flex gap-2 mb-4">
                   <span className={"px-2 py-0.5 rounded text-xs " + (
                     selectedProject.priority === 'high' || selectedProject.priority === 'critical'
-                      ? 'bg-red-500/20 text-red-400' 
-                      : 'bg-white/10 text-white/60'
+                      ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-white/60'
                   )}>{selectedProject.priority}</span>
                   <span className={"px-2 py-0.5 rounded text-xs " + (
                     selectedProject.status === 'active' ? 'bg-blue-500/20 text-blue-400' :
@@ -206,9 +201,7 @@ export default function Dashboard() {
                       style={{width: selectedProject.task_count ? `${(selectedProject.done_count || 0) / selectedProject.task_count * 100}%` : '0%'}}
                     />
                   </div>
-                  <p className="text-white text-sm">
-                    {selectedProject.done_count || 0} of {selectedProject.task_count || 0} tasks done
-                  </p>
+                  <p className="text-white text-sm">{selectedProject.done_count || 0} of {selectedProject.task_count || 0} tasks done</p>
                 </div>
                 <button className="w-full mt-4 bg-accent hover:bg-accent/80 text-black font-medium py-2 px-4 rounded-lg transition-colors">
                   View Tasks
