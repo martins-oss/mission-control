@@ -14,7 +14,15 @@ export const AGENTS: AgentMeta[] = [
   { id: 'pixel', name: 'Pixel', emoji: '🎮', role: 'Creative' },
 ]
 
-export const AGENT_MAP = Object.fromEntries(AGENTS.map(a => [a.id, a]))
+// Non-agent owners that may appear in tasks
+export const EXTRA_OWNERS: Record<string, { name: string; emoji: string }> = {
+  martin: { name: 'Martin', emoji: '👤' },
+}
+
+export const AGENT_MAP: Record<string, { name: string; emoji: string; role?: string }> = {
+  ...Object.fromEntries(AGENTS.map(a => [a.id, a])),
+  ...EXTRA_OWNERS,
+}
 
 export const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
   active:      { bg: 'bg-emerald-500/15', text: 'text-emerald-400', dot: 'bg-emerald-400' },
@@ -32,5 +40,6 @@ export const PROJECTS = [
   { id: 'doit', name: 'DO IT', description: 'Fitness app at dothework.fit', status: 'active', url: 'https://dothework.fit' },
   { id: 'supliful', name: 'Supliful', description: 'Supplements business', status: 'active', url: null },
   { id: 'mission-control', name: 'Mission Control', description: 'This dashboard', status: 'active', url: 'https://mission.dothework.fit' },
+  { id: 'system', name: 'System', description: 'Infrastructure & operations', status: 'active', url: null },
   { id: 'pixel', name: 'Pixel', description: 'Creative projects', status: 'idle', url: null },
 ]

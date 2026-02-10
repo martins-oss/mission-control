@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react'
 import { useAuth } from '@/lib/auth'
 import { useTasks, useBlockers, useLinkedInPosts, useLinkedInAuth } from '@/lib/hooks'
-import { AGENTS, AGENT_MAP, STATUS_COLORS, PROJECTS } from '@/lib/constants'
+import { AGENTS, AGENT_MAP, STATUS_COLORS, PROJECTS, EXTRA_OWNERS } from '@/lib/constants'
 import type { Task, LinkedInPost } from '@/lib/supabase'
 
 type Tab = 'dashboard' | 'linkedin'
@@ -43,11 +43,11 @@ function PriorityBadge({ priority }: { priority: string }) {
 }
 
 function getAgentStatus(agentId: string, tasks: Task[]): string {
+  // All agents have heartbeats running, so none are truly offline
   const agentTasks = tasks.filter(t => t.owner === agentId)
   if (agentTasks.some(t => t.status === 'blocked')) return 'error'
   if (agentTasks.some(t => t.status === 'in_progress')) return 'active'
-  if (agentTasks.length > 0) return 'idle'
-  return 'offline'
+  return 'idle'
 }
 
 function getAgentCurrentTask(agentId: string, tasks: Task[]): string | null {

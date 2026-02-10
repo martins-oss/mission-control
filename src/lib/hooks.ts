@@ -10,9 +10,17 @@ export function useTasks() {
     const { data } = await supabase
       .from('tasks')
       .select('*')
-      .order('priority', { ascending: false })
       .order('updated_at', { ascending: false })
-    if (data) setTasks(data)
+    if (data) {
+      const statusOrder: Record<string, number> = { in_progress: 0, waiting: 1, backlog: 2, blocked: 0, done: 3 }
+      const prioOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
+      data.sort((a: any, b: any) => {
+        const sd = (statusOrder[a.status] ?? 2) - (statusOrder[b.status] ?? 2)
+        if (sd !== 0) return sd
+        return (prioOrder[a.priority] ?? 2) - (prioOrder[b.priority] ?? 2)
+      })
+      setTasks(data)
+    }
     setLoading(false)
   }, [])
 
