@@ -27,3 +27,29 @@ export interface Blocker {
   created_at: string
   task?: Task
 }
+
+export interface LinkedInPost {
+  id: string
+  title: string | null
+  content: string
+  media_url: string | null
+  status: 'draft' | 'approved' | 'scheduled' | 'posted' | 'failed'
+  scheduled_at: string | null
+  posted_at: string | null
+  linkedin_post_id: string | null
+  author: string
+  approved_by: string | null
+  approved_at: string | null
+  error: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface LinkedInAuth {
+  id: string
+  user_urn: string
+  access_token: string
+  refresh_token: string | null
+  expires_at: string
+  created_at: string
+}

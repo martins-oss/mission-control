@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
-import { supabase, Task, Blocker } from './supabase'
+import { supabase, Task, Blocker, LinkedInPost, LinkedInAuth } from './supabase'
 
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([])
@@ -46,4 +46,48 @@ export function useBlockers() {
   }, [fetch])
 
   return { blockers, loading, refresh: fetch }
+}
+
+export function useLinkedInPosts() {
+  const [posts, setPosts] = useState<LinkedInPost[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchPosts = useCallback(async () => {
+    const { data } = await supabase
+      .from('linkedin_posts')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50)
+    if (data) setPosts(data)
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    fetchPosts()
+    const interval = setInterval(fetchPosts, 15000)
+    return () => clearInterval(interval)
+  }, [fetchPosts])
+
+  return { posts, loading, refresh: fetchPosts }
+}
+
+export function useLinkedInAuth() {
+  const [auth, setAuth] = useState<LinkedInAuth | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetch() {
+      const { data } = await supabase
+        .from('linkedin_auth')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+      setAuth(data)
+      setLoading(false)
+    }
+    fetch()
+  }, [])
+
+  return { auth, loading }
 }

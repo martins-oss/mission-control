@@ -1,9 +1,11 @@
 "use client"
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useAuth } from '@/lib/auth'
-import { useTasks, useBlockers } from '@/lib/hooks'
+import { useTasks, useBlockers, useLinkedInPosts, useLinkedInAuth } from '@/lib/hooks'
 import { AGENTS, AGENT_MAP, STATUS_COLORS, PROJECTS } from '@/lib/constants'
-import type { Task } from '@/lib/supabase'
+import type { Task, LinkedInPost } from '@/lib/supabase'
+
+type Tab = 'dashboard' | 'linkedin'
 
 function timeAgo(date: string): string {
   const diff = Date.now() - new Date(date).getTime()
@@ -57,6 +59,9 @@ export default function Dashboard() {
   const { user, loading: authLoading, signOut } = useAuth(true)
   const { tasks, loading: tasksLoading } = useTasks()
   const { blockers, loading: blockersLoading } = useBlockers()
+  const { posts, loading: postsLoading, refresh: refreshPosts } = useLinkedInPosts()
+  const { auth: linkedInAuth, loading: authLinkedInLoading } = useLinkedInAuth()
+  const [tab, setTab] = useState<Tab>('dashboard')
 
   const stats = useMemo(() => {
     const active = tasks.filter(t => t.status === 'in_progress').length
@@ -93,6 +98,39 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Tabs */}
+        <div className="flex gap-1 mb-6 bg-white/[0.04] rounded-lg p-1 w-fit">
+          {[
+            { key: 'dashboard' as Tab, label: 'Dashboard' },
+            { key: 'linkedin' as Tab, label: 'LinkedIn' },
+          ].map(t => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                tab === t.key ? 'bg-emerald-500/20 text-emerald-400' : 'text-white/40 hover:text-white/60'
+              }`}
+            >
+              {t.label}
+              {t.key === 'linkedin' && posts.filter(p => p.status === 'draft').length > 0 && (
+                <span className="ml-1.5 px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-400 text-[10px]">
+                  {posts.filter(p => p.status === 'draft').length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'linkedin' ? (
+          <LinkedInView
+            posts={posts}
+            loading={postsLoading}
+            auth={linkedInAuth}
+            authLoading={authLinkedInLoading}
+            onRefresh={refreshPosts}
+          />
+        ) : (
+        <>
         {/* Stats Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
           {[
@@ -267,7 +305,230 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
     </main>
+  )
+}
+
+// ─── LinkedIn View ─────────────────────────────────────────
+
+interface LinkedInViewProps {
+  posts: LinkedInPost[]
+  loading: boolean
+  auth: any
+  authLoading: boolean
+  onRefresh: () => void
+}
+
+const LI_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  draft:     { bg: 'bg-yellow-500/15', text: 'text-yellow-400' },
+  approved:  { bg: 'bg-blue-500/15',   text: 'text-blue-400' },
+  scheduled: { bg: 'bg-emerald-500/15', text: 'text-emerald-400' },
+  posted:    { bg: 'bg-emerald-500/15', text: 'text-emerald-400' },
+  failed:    { bg: 'bg-red-500/15',     text: 'text-red-400' },
+}
+
+function LinkedInView({ posts, loading, auth, authLoading, onRefresh }: LinkedInViewProps) {
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [scheduleFor, setScheduleFor] = useState<Record<string, string>>({})
+
+  const isConnected = auth && new Date(auth.expires_at) > new Date()
+
+  const handleAction = async (postId: string, updates: Record<string, any>) => {
+    setActionLoading(postId)
+    try {
+      await fetch('/api/linkedin/posts', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: postId, ...updates }),
+      })
+      onRefresh()
+    } catch (err) {
+      console.error('Action failed:', err)
+    }
+    setActionLoading(null)
+  }
+
+  const handlePublishNow = async (postId: string) => {
+    setActionLoading(postId)
+    try {
+      const res = await fetch('/api/linkedin/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId }),
+      })
+      const data = await res.json()
+      if (!data.success) {
+        alert(`Failed: ${data.error}`)
+      }
+      onRefresh()
+    } catch (err) {
+      console.error('Publish failed:', err)
+    }
+    setActionLoading(null)
+  }
+
+  const drafts = posts.filter(p => p.status === 'draft')
+  const scheduled = posts.filter(p => p.status === 'approved' || p.status === 'scheduled')
+  const history = posts.filter(p => p.status === 'posted' || p.status === 'failed')
+
+  return (
+    <div className="space-y-6">
+      {/* Connection Status */}
+      <div className="bg-white/[0.04] rounded-xl p-4 border border-white/[0.06] flex items-center justify-between">
+        <div>
+          <h3 className="text-white font-medium text-sm">LinkedIn Connection</h3>
+          <p className="text-white/30 text-xs mt-0.5">
+            {authLoading ? 'Checking...' : isConnected ? `Connected — expires ${new Date(auth.expires_at).toLocaleDateString()}` : 'Not connected'}
+          </p>
+        </div>
+        <a
+          href="/api/linkedin/authorize"
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            isConnected
+              ? 'bg-white/[0.06] text-white/40 hover:text-white'
+              : 'bg-emerald-500 text-black hover:bg-emerald-400'
+          }`}
+        >
+          {isConnected ? 'Reconnect' : 'Connect LinkedIn'}
+        </a>
+      </div>
+
+      {/* Drafts for Review */}
+      {drafts.length > 0 && (
+        <div>
+          <h2 className="text-white/50 text-xs uppercase tracking-wider mb-3">
+            Drafts for Review
+            <span className="ml-2 px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-400 text-[10px]">{drafts.length}</span>
+          </h2>
+          <div className="space-y-3">
+            {drafts.map(post => (
+              <div key={post.id} className="bg-white/[0.04] rounded-xl p-5 border border-white/[0.06]">
+                {post.title && <h3 className="text-white font-medium text-sm mb-1">{post.title}</h3>}
+                <p className="text-white/70 text-sm whitespace-pre-wrap mb-4">{post.content}</p>
+                {post.media_url && (
+                  <p className="text-blue-400 text-xs mb-3">🔗 {post.media_url}</p>
+                )}
+                <div className="flex items-center gap-2 text-xs text-white/30 mb-4">
+                  <span>By {AGENT_MAP[post.author]?.emoji || ''} {AGENT_MAP[post.author]?.name || post.author}</span>
+                  <span>·</span>
+                  <span>{new Date(post.created_at).toLocaleDateString()}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleAction(post.id, { status: 'approved', approved_by: 'martin', approved_at: new Date().toISOString() })}
+                    disabled={actionLoading === post.id}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-sm font-medium hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
+                  >
+                    ✓ Approve
+                  </button>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="datetime-local"
+                      value={scheduleFor[post.id] || ''}
+                      onChange={e => setScheduleFor(prev => ({ ...prev, [post.id]: e.target.value }))}
+                      className="bg-white/[0.06] border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-emerald-500/50"
+                    />
+                    <button
+                      onClick={() => {
+                        const dt = scheduleFor[post.id]
+                        if (!dt) return alert('Pick a time first')
+                        handleAction(post.id, {
+                          status: 'scheduled',
+                          scheduled_at: new Date(dt).toISOString(),
+                          approved_by: 'martin',
+                          approved_at: new Date().toISOString(),
+                        })
+                      }}
+                      disabled={actionLoading === post.id || !scheduleFor[post.id]}
+                      className="px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-sm font-medium hover:bg-blue-500/30 transition-colors disabled:opacity-50"
+                    >
+                      Schedule
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => handleAction(post.id, { status: 'failed', error: 'Rejected by reviewer' })}
+                    disabled={actionLoading === post.id}
+                    className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400/60 text-sm hover:bg-red-500/20 transition-colors disabled:opacity-50 ml-auto"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Scheduled / Approved */}
+      {scheduled.length > 0 && (
+        <div>
+          <h2 className="text-white/50 text-xs uppercase tracking-wider mb-3">Upcoming</h2>
+          <div className="space-y-2">
+            {scheduled.map(post => (
+              <div key={post.id} className="bg-white/[0.04] rounded-xl p-4 border border-white/[0.06] flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <p className="text-white/70 text-sm line-clamp-2">{post.content}</p>
+                  <div className="flex items-center gap-2 mt-2 text-xs text-white/30">
+                    {post.scheduled_at && (
+                      <span className="text-blue-400">📅 {new Date(post.scheduled_at).toLocaleString()}</span>
+                    )}
+                    <span className={`px-1.5 py-0.5 rounded ${LI_STATUS_COLORS[post.status]?.bg} ${LI_STATUS_COLORS[post.status]?.text}`}>
+                      {post.status}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handlePublishNow(post.id)}
+                  disabled={actionLoading === post.id || !isConnected}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-medium hover:bg-emerald-500/30 transition-colors disabled:opacity-50 whitespace-nowrap"
+                >
+                  Post Now
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* History */}
+      <div>
+        <h2 className="text-white/50 text-xs uppercase tracking-wider mb-3">Post History</h2>
+        <div className="bg-white/[0.04] rounded-xl border border-white/[0.06] overflow-hidden">
+          {loading ? (
+            <div className="p-6 text-center text-white/30 text-sm">Loading...</div>
+          ) : history.length === 0 ? (
+            <div className="p-6 text-center text-white/30 text-sm">No posts yet</div>
+          ) : (
+            <div className="divide-y divide-white/[0.06]">
+              {history.map(post => (
+                <div key={post.id} className="p-4 flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white/60 text-sm line-clamp-1">{post.content}</p>
+                    <div className="flex items-center gap-2 mt-1 text-xs text-white/25">
+                      {post.posted_at && <span>{new Date(post.posted_at).toLocaleString()}</span>}
+                      {post.error && <span className="text-red-400">{post.error.slice(0, 60)}</span>}
+                    </div>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded text-xs whitespace-nowrap ${LI_STATUS_COLORS[post.status]?.bg} ${LI_STATUS_COLORS[post.status]?.text}`}>
+                    {post.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Empty State */}
+      {!loading && posts.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-white/30 text-sm">No LinkedIn posts yet.</p>
+          <p className="text-white/20 text-xs mt-1">Dash will create drafts for you to review.</p>
+        </div>
+      )}
+    </div>
   )
 }
