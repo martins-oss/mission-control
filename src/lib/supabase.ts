@@ -41,6 +41,9 @@ export interface LinkedInPost {
   approved_by: string | null
   approved_at: string | null
   error: string | null
+  feedback: string | null
+  feedback_at: string | null
+  media_urls: string[] | null
   created_at: string
   updated_at: string
 }
@@ -52,4 +55,16 @@ export interface LinkedInAuth {
   refresh_token: string | null
   expires_at: string
   created_at: string
+}
+
+export interface AgentStatus {
+  agent_id: string
+  status: string
+  current_task: string | null
+  last_heartbeat: string | null
+  last_message: string | null
+  model: string | null
+  heartbeat_interval: string | null
+  tools: any | null
+  updated_at: string
 }

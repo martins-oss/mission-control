@@ -1,6 +1,47 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
-import { supabase, Task, Blocker, LinkedInPost, LinkedInAuth } from './supabase'
+import { supabase, Task, Blocker, LinkedInPost, LinkedInAuth, AgentStatus } from './supabase'
+
+export function useAgentStatus() {
+  const [statuses, setStatuses] = useState<AgentStatus[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchStatuses = useCallback(async () => {
+    const { data } = await supabase
+      .from('agent_status')
+      .select('*')
+      .order('agent_id')
+    if (data) setStatuses(data)
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    fetchStatuses()
+    const interval = setInterval(fetchStatuses, 15000)
+    return () => clearInterval(interval)
+  }, [fetchStatuses])
+
+  return { statuses, loading }
+}
+
+/** Derive display status from heartbeat timing */
+export function deriveStatus(agent: AgentStatus): 'active' | 'idle' | 'offline' {
+  if (!agent.last_heartbeat) return 'offline'
+  const intervalMs = parseInterval(agent.heartbeat_interval || '5m')
+  const elapsed = Date.now() - new Date(agent.last_heartbeat).getTime()
+  if (elapsed < intervalMs * 2.5) return 'active'
+  if (elapsed < intervalMs * 5) return 'idle'
+  return 'offline'
+}
+
+function parseInterval(s: string): number {
+  const m = s.match(/^(\d+)(s|m|h)$/)
+  if (!m) return 300000
+  const n = parseInt(m[1])
+  if (m[2] === 's') return n * 1000
+  if (m[2] === 'm') return n * 60000
+  return n * 3600000
+}
 
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([])
