@@ -33,7 +33,7 @@ export interface LinkedInPost {
   title: string | null
   content: string
   media_url: string | null
-  status: 'draft' | 'approved' | 'scheduled' | 'posted' | 'failed'
+  status: 'draft' | 'feedback_requested' | 'approved' | 'scheduled' | 'posted' | 'failed'
   scheduled_at: string | null
   posted_at: string | null
   linkedin_post_id: string | null
