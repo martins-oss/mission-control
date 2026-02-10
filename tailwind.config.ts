@@ -9,14 +9,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: {
-          primary: '#0A0A0A',
-          secondary: '#141414',
-        },
-        accent: {
-          primary: '#34D399',
-          muted: 'rgba(52, 211, 153, 0.15)',
-        },
+        accent: '#34D399',
       },
     },
   },
