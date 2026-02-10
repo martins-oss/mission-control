@@ -99,7 +99,7 @@ export default function Dashboard() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 bg-white/[0.04] rounded-lg p-1 w-fit">
+        <div className="flex gap-1 mb-8 bg-white/[0.06] rounded-xl p-1.5 w-fit border border-white/[0.06]">
           {[
             { key: 'dashboard' as Tab, label: 'Dashboard' },
             { key: 'linkedin' as Tab, label: 'LinkedIn' },
@@ -107,13 +107,13 @@ export default function Dashboard() {
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                tab === t.key ? 'bg-emerald-500/20 text-emerald-400' : 'text-white/40 hover:text-white/60'
+              className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                tab === t.key ? 'bg-emerald-500/20 text-emerald-400 shadow-sm' : 'text-white/40 hover:text-white/60 hover:bg-white/[0.04]'
               }`}
             >
               {t.label}
               {t.key === 'linkedin' && posts.filter(p => p.status === 'draft').length > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-400 text-[10px]">
+                <span className="ml-2 px-1.5 py-0.5 rounded-full bg-yellow-500/15 text-yellow-400 text-[10px] font-bold">
                   {posts.filter(p => p.status === 'draft').length}
                 </span>
               )}
@@ -156,18 +156,20 @@ export default function Dashboard() {
               const agentTaskCount = tasks.filter(t => t.owner === agent.id && t.status !== 'done').length
 
               return (
-                <div key={agent.id} className="bg-white/[0.04] rounded-xl p-4 border border-white/[0.06] hover:border-white/[0.12] transition-colors">
+                <div key={agent.id} className="bg-white/[0.04] rounded-xl p-4 border border-white/[0.06] hover:border-emerald-500/20 transition-all group">
                   <div className="flex items-start justify-between mb-3">
-                    <span className="text-2xl">{agent.emoji}</span>
+                    <span className="text-2xl group-hover:scale-110 transition-transform">{agent.emoji}</span>
                     <StatusBadge status={status} />
                   </div>
                   <h3 className="text-white font-semibold text-sm">{agent.name}</h3>
-                  <p className="text-white/30 text-xs">{agent.role}</p>
-                  {currentTask && (
-                    <p className="text-white/50 text-xs mt-2 line-clamp-2">{currentTask}</p>
+                  <p className="text-white/30 text-xs mb-2">{agent.role}</p>
+                  {currentTask ? (
+                    <p className="text-emerald-400/60 text-xs line-clamp-2 leading-relaxed">{currentTask}</p>
+                  ) : (
+                    <p className="text-white/20 text-xs">No active task</p>
                   )}
                   {agentTaskCount > 0 && (
-                    <p className="text-white/25 text-[10px] mt-1">{agentTaskCount} task{agentTaskCount > 1 ? 's' : ''}</p>
+                    <p className="text-white/25 text-[10px] mt-2">{agentTaskCount} task{agentTaskCount > 1 ? 's' : ''} queued</p>
                   )}
                 </div>
               )
