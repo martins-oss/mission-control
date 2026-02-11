@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   const error = req.nextUrl.searchParams.get('error')
 
   if (error || !code) {
-    return NextResponse.redirect(new URL('/?linkedin=error', req.url))
+    return NextResponse.redirect(new URL('/linkedin?linkedin=error', req.url))
   }
 
   const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://mission.dothework.fit'}/api/linkedin/callback`
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     if (!tokenRes.ok) {
       const err = await tokenRes.text()
       console.error('LinkedIn token exchange failed:', err)
-      return NextResponse.redirect(new URL('/?linkedin=error', req.url))
+      return NextResponse.redirect(new URL('/linkedin?linkedin=error', req.url))
     }
 
     const tokenData = await tokenRes.json()
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
 
     if (!profileRes.ok) {
       console.error('LinkedIn profile fetch failed:', await profileRes.text())
-      return NextResponse.redirect(new URL('/?linkedin=error', req.url))
+      return NextResponse.redirect(new URL('/linkedin?linkedin=error', req.url))
     }
 
     const profile = await profileRes.json()
@@ -68,12 +68,12 @@ export async function GET(req: NextRequest) {
 
     if (insertError) {
       console.error('Failed to store LinkedIn auth:', insertError)
-      return NextResponse.redirect(new URL('/?linkedin=error', req.url))
+      return NextResponse.redirect(new URL('/linkedin?linkedin=error', req.url))
     }
 
-    return NextResponse.redirect(new URL('/?linkedin=connected', req.url))
+    return NextResponse.redirect(new URL('/linkedin?linkedin=connected', req.url))
   } catch (err) {
     console.error('LinkedIn OAuth error:', err)
-    return NextResponse.redirect(new URL('/?linkedin=error', req.url))
+    return NextResponse.redirect(new URL('/linkedin?linkedin=error', req.url))
   }
 }

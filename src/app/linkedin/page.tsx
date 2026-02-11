@@ -187,7 +187,15 @@ export default function LinkedInPage() {
                 )}
 
                 <div className="flex items-center gap-2 text-xs text-white/25 mb-4">
-                  <span>By {AGENT_MAP[post.author]?.emoji || ''} {AGENT_MAP[post.author]?.name || post.author}</span>
+                  <span className="inline-flex items-center gap-1">
+                    By
+                    {AGENT_MAP[post.author]?.avatar ? (
+                      <img src={AGENT_MAP[post.author].avatar} alt="" className="w-4 h-4 rounded-full inline" />
+                    ) : (
+                      <span>{AGENT_MAP[post.author]?.emoji || ''}</span>
+                    )}
+                    {AGENT_MAP[post.author]?.name || post.author}
+                  </span>
                   <span>·</span>
                   <span>{new Date(post.created_at).toLocaleDateString()}</span>
                 </div>

@@ -1,25 +1,28 @@
+const AVATAR_BASE = 'https://vogtsynqcrnwexxlrsec.supabase.co/storage/v1/object/public/avatars'
+
 export interface AgentMeta {
   id: string
   name: string
   emoji: string
   role: string
+  avatar: string
 }
 
 export const AGENTS: AgentMeta[] = [
-  { id: 'main', name: 'Iris', emoji: '🫡', role: 'Chief of Staff' },
-  { id: 'max', name: 'Max', emoji: '⚙️', role: 'Builder' },
-  { id: 'dash', name: 'Dash', emoji: '📣', role: 'Brand & Growth' },
-  { id: 'atlas', name: 'Atlas', emoji: '🏢', role: 'Supliful Ops' },
-  { id: 'amber', name: 'Amber', emoji: '🔍', role: 'Operator' },
-  { id: 'pixel', name: 'Pixel', emoji: '🎮', role: 'Creative' },
+  { id: 'main', name: 'Iris', emoji: '🫡', role: 'Chief of Staff', avatar: `${AVATAR_BASE}/iris.png` },
+  { id: 'max', name: 'Max', emoji: '⚙️', role: 'Builder', avatar: `${AVATAR_BASE}/max.png` },
+  { id: 'dash', name: 'Dash', emoji: '📣', role: 'Brand & Growth', avatar: `${AVATAR_BASE}/dash.png` },
+  { id: 'atlas', name: 'Atlas', emoji: '🏢', role: 'Supliful Ops', avatar: `${AVATAR_BASE}/atlas.png` },
+  { id: 'amber', name: 'Amber', emoji: '🔍', role: 'Operator', avatar: `${AVATAR_BASE}/amber.png` },
+  { id: 'pixel', name: 'Pixel', emoji: '🎮', role: 'Creative', avatar: `${AVATAR_BASE}/pixel.png` },
 ]
 
 // Non-agent owners that may appear in tasks
-export const EXTRA_OWNERS: Record<string, { name: string; emoji: string }> = {
+export const EXTRA_OWNERS: Record<string, { name: string; emoji: string; avatar?: string }> = {
   martin: { name: 'Martin', emoji: '👤' },
 }
 
-export const AGENT_MAP: Record<string, { name: string; emoji: string; role?: string }> = {
+export const AGENT_MAP: Record<string, { name: string; emoji: string; role?: string; avatar?: string }> = {
   ...Object.fromEntries(AGENTS.map(a => [a.id, a])),
   ...EXTRA_OWNERS,
 }
@@ -43,3 +46,12 @@ export const PROJECTS = [
   { id: 'system', name: 'System', description: 'Infrastructure & operations', status: 'active', url: null },
   { id: 'pixel', name: 'Pixel', description: 'Creative projects', status: 'idle', url: null },
 ]
+
+/** Format raw model string to friendly name */
+export function formatModel(raw: string | null): string {
+  if (!raw) return '—'
+  if (raw.includes('opus-4-6') || raw.includes('opus-4')) return 'Opus 4.6'
+  if (raw.includes('sonnet-4-5') || raw.includes('sonnet-4')) return 'Sonnet 4.5'
+  if (raw.includes('haiku')) return 'Haiku'
+  return raw.replace('anthropic/', '').replace('claude-', '')
+}
