@@ -97,6 +97,78 @@ export function useBlockers() {
   return { blockers, loading, refresh: fetch }
 }
 
+export interface UsageData {
+  agents: Record<string, { tokens: number; cost: number; model: string; sessions: number }>
+  total: { tokens: number; cost: number }
+  history: any[]
+  fetchedAt: string
+}
+
+export function useUsage() {
+  const [usage, setUsage] = useState<UsageData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const fetchUsage = useCallback(async () => {
+    try {
+      const res = await fetch('/api/usage?history=true')
+      if (res.ok) {
+        const data = await res.json()
+        setUsage(data)
+      }
+    } catch {}
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    fetchUsage()
+    const interval = setInterval(fetchUsage, 60000)
+    return () => clearInterval(interval)
+  }, [fetchUsage])
+
+  return { usage, loading }
+}
+
+export interface Improvement {
+  id: string
+  proposal_id: string | null
+  title: string
+  description: string | null
+  impact: string
+  risk: string
+  owner: string | null
+  status: string
+  outcome: string | null
+  approved_by: string | null
+  approved_at: string | null
+  implemented_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export function useImprovements() {
+  const [improvements, setImprovements] = useState<Improvement[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchImprovements = useCallback(async () => {
+    try {
+      const res = await fetch('/api/improvements')
+      if (res.ok) {
+        const data = await res.json()
+        setImprovements(data)
+      }
+    } catch {}
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    fetchImprovements()
+    const interval = setInterval(fetchImprovements, 30000)
+    return () => clearInterval(interval)
+  }, [fetchImprovements])
+
+  return { improvements, loading, refresh: fetchImprovements }
+}
+
 export function useLinkedInPosts() {
   const [posts, setPosts] = useState<LinkedInPost[]>([])
   const [loading, setLoading] = useState(true)
