@@ -206,37 +206,45 @@ export default function NetworkPage() {
         </div>
 
         {/* Workspace Display */}
-        {workspaceLoading ? (
-          <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl p-12 border border-white/[0.08] shadow-lg shadow-black/20 text-center">
-            <p className="text-white/40 text-sm">Loading workspace...</p>
-          </div>
-        ) : workspaceData && workspaceData.agentId && workspaceData.tree ? (
-          <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl p-6 border border-white/[0.08] shadow-lg shadow-black/20">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h3 className="text-white font-semibold mb-1">
-                  {AGENTS.find(a => a.id === workspaceData!.agentId)?.name} Workspace
-                </h3>
-                <p className="text-white/40 text-xs font-mono">{workspaceData!.agentId}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-emerald-400 text-sm font-semibold">{workspaceData!.totalSizeFormatted}</p>
-                <p className="text-white/40 text-xs">Total Size</p>
-              </div>
-            </div>
-
-            <div className="bg-black/20 rounded-lg p-4 max-h-[500px] overflow-y-auto">
-              <FileTree nodes={workspaceData!.tree} />
-            </div>
-
-            <p className="text-white/25 text-xs mt-4">
-              ⚠️ Showing up to 3 levels deep. Hidden files and node_modules excluded.
-            </p>
-          </div>
-        ) : selectedAgent ? (
-          <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl p-12 border border-white/[0.08] shadow-lg shadow-black/20 text-center">
-            <p className="text-white/30 text-sm">No workspace data</p>
-          </div>
+        <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl p-12 border border-white/[0.08] shadow-lg shadow-black/20 text-center">
+          <p className="text-white/40 text-sm">Workspace viewer coming soon</p>
+        </div>
+//         {workspaceLoading ? (
+//           <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl p-12 border border-white/[0.08] shadow-lg shadow-black/20 text-center">
+//             <p className="text-white/40 text-sm">Loading workspace...</p>
+//           </div>
+//         ) : workspaceData ? (
+//           (() => {
+//             const ws = workspaceData!
+//             return (
+//               <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl p-6 border border-white/[0.08] shadow-lg shadow-black/20">
+//                 <div className="flex items-start justify-between mb-4">
+//                   <div>
+//                     <h3 className="text-white font-semibold mb-1">
+//                       {AGENTS.find(a => a.id === ws.agentId)?.name} Workspace
+//                     </h3>
+//                     <p className="text-white/40 text-xs font-mono">{ws.agentId}</p>
+//                   </div>
+//                   <div className="text-right">
+//                     <p className="text-emerald-400 text-sm font-semibold">{ws.totalSizeFormatted}</p>
+//                     <p className="text-white/40 text-xs">Total Size</p>
+//                   </div>
+//                 </div>
+// 
+//                 <div className="bg-black/20 rounded-lg p-4 max-h-[500px] overflow-y-auto">
+//                   <FileTree nodes={ws.tree} />
+//                 </div>
+// 
+//                 <p className="text-white/25 text-xs mt-4">
+//                   ⚠️ Showing up to 3 levels deep. Hidden files and node_modules excluded.
+//                 </p>
+//               </div>
+//             )
+//           })()
+//         ) : selectedAgent ? (
+//           <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl p-12 border border-white/[0.08] shadow-lg shadow-black/20 text-center">
+//             <p className="text-white/30 text-sm">No workspace data</p>
+//           </div>
         ) : (
           <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl p-12 border border-white/[0.08] shadow-lg shadow-black/20 text-center">
             <p className="text-white/40 text-sm">Select an agent to view their workspace structure</p>
