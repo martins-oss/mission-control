@@ -114,6 +114,7 @@ export interface CronJob {
   enabled: boolean
   last_run: string | null
   next_run: string | null
+  agent_id: string | null
   updated_at: string
 }
 
