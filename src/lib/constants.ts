@@ -47,6 +47,23 @@ export const PROJECTS = [
   { id: 'pixel', name: 'Pixel', description: 'Creative projects', status: 'idle', url: null },
 ]
 
+/** Model pricing per 1M tokens (USD) */
+export const MODEL_PRICING: Record<string, { input: number; output: number; cacheRead: number; cacheWrite: number }> = {
+  'claude-opus-4-6':                     { input: 15,   output: 75,   cacheRead: 1.5,  cacheWrite: 18.75 },
+  'anthropic/claude-opus-4-6':           { input: 15,   output: 75,   cacheRead: 1.5,  cacheWrite: 18.75 },
+  'claude-sonnet-4-5':                   { input: 3,    output: 15,   cacheRead: 0.3,  cacheWrite: 3.75 },
+  'anthropic/claude-sonnet-4-5-20250929':{ input: 3,    output: 15,   cacheRead: 0.3,  cacheWrite: 3.75 },
+  'claude-3-5-haiku':                    { input: 0.25, output: 1.25, cacheRead: 0.025, cacheWrite: 0.3125 },
+}
+
+export function getModelPricing(model: string) {
+  if (MODEL_PRICING[model]) return MODEL_PRICING[model]
+  if (model.includes('opus')) return MODEL_PRICING['claude-opus-4-6']
+  if (model.includes('sonnet')) return MODEL_PRICING['claude-sonnet-4-5']
+  if (model.includes('haiku')) return MODEL_PRICING['claude-3-5-haiku']
+  return MODEL_PRICING['claude-sonnet-4-5'] // default
+}
+
 /** Format raw model string to friendly name */
 export function formatModel(raw: string | null): string {
   if (!raw) return '—'
