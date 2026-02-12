@@ -4,10 +4,10 @@ import Link from 'next/link'
 import AppShell from '@/components/AppShell'
 import { StatusBadge } from '@/components/StatusBadge'
 import { HeroStatCard } from '@/components/HeroStatCard'
-import { EmptyState, AgentCardSkeleton, TaskCardSkeleton } from '@/components/EmptyState'
+import { EmptyState, TaskCardSkeleton } from '@/components/EmptyState'
 import { useAgentStatus, deriveStatus, useTasks, useBlockers, useImprovements } from '@/lib/hooks'
-import { AGENTS, AGENT_MAP, STATUS_COLORS, formatModel } from '@/lib/constants'
-import type { Task, AgentStatus } from '@/lib/supabase'
+import { AGENTS, AGENT_MAP, AGENT_COLORS, STATUS_COLORS, formatModel } from '@/lib/constants'
+import type { AgentStatus } from '@/lib/supabase'
 
 function timeAgo(date: string | null): string {
   if (!date) return 'never'
@@ -19,6 +19,23 @@ function timeAgo(date: string | null): string {
   const hrs = Math.floor(mins / 60)
   if (hrs < 24) return `${hrs}h ago`
   return `${Math.floor(hrs / 24)}d ago`
+}
+
+function HealthBar({ status, color }: { status: string; color: string }) {
+  const widths: Record<string, string> = {
+    active: 'w-full',
+    idle: 'w-1/2',
+    offline: 'w-0',
+    error: 'w-1/4',
+  }
+  return (
+    <div className="health-bar mt-2">
+      <div
+        className={`health-bar-fill ${widths[status] || 'w-0'}`}
+        style={{ backgroundColor: color }}
+      />
+    </div>
+  )
 }
 
 export default function Dashboard() {
@@ -59,219 +76,148 @@ export default function Dashboard() {
     return s && deriveStatus(s) === 'active'
   }).length
 
-  const pendingImprovements = improvements.filter(i => i.status === 'proposed' || i.status === 'needs_approval')
+  const pendingImprovements = improvements.filter(
+    i => i.status === 'proposed' || i.status === 'needs_approval'
+  )
 
   return (
     <AppShell>
-      {/* Hero Section */}
-      <div className="mb-10">
-        <h1 className="font-display text-4xl font-bold tracking-tight text-white mb-3">
-          Mission Control
+      {/* ── Page Header ── */}
+      <div className="mb-8">
+        <h1 className="font-arcade text-sm text-neon-green text-glow-green mb-2">
+          🕹️ HEADQUARTERS
         </h1>
-        <p className="text-white/60 text-lg">
-          {activeAgents} active agent{activeAgents !== 1 ? 's' : ''} · {stats.active} task{stats.active !== 1 ? 's' : ''} in progress
-          {stats.blocked > 0 && <span className="text-red-400/70 ml-2">· {stats.blocked} blocked</span>}
+        <p className="text-white/30 text-xs font-mono">
+          SYSTEM OVERVIEW — {activeAgents} AGENT{activeAgents !== 1 ? 'S' : ''} ONLINE ·{' '}
+          {stats.active} MISSION{stats.active !== 1 ? 'S' : ''} ACTIVE
+          {stats.blocked > 0 && (
+            <span className="text-neon-pink ml-2">· {stats.blocked} BLOCKED</span>
+          )}
         </p>
       </div>
 
-      {/* Quick Stats - Hero Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-        <HeroStatCard 
-          label="Active Agents"
+      {/* ── Stat Cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <HeroStatCard
+          label="Agents Online"
           value={activeAgents}
-          icon="◉"
-          accentColor="emerald"
-          href="#agents"
+          icon="👾"
+          color="green"
         />
-        <HeroStatCard 
-          label="In Progress"
+        <HeroStatCard
+          label="Active Missions"
           value={tasksLoading ? '—' : stats.active}
           icon="⚡"
-          accentColor="blue"
-          href="#tasks"
+          color="blue"
         />
-        <HeroStatCard 
+        <HeroStatCard
           label="Blocked"
           value={tasksLoading ? '—' : stats.blocked}
-          icon="⚠"
-          accentColor={stats.blocked > 0 ? 'red' : 'gray'}
-          href="#tasks"
+          icon="🚫"
+          color={stats.blocked > 0 ? 'pink' : 'gray'}
         />
-        <HeroStatCard 
+        <HeroStatCard
           label="Backlog"
           value={tasksLoading ? '—' : stats.backlog}
-          icon="◷"
-          accentColor="gray"
-          href="#tasks"
+          icon="📋"
+          color="gray"
         />
       </div>
 
-      {/* Agent Status Grid */}
-      <div id="agents" className="mb-12">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="font-display text-2xl font-semibold tracking-tight text-white">Agents</h2>
-          <Link href="/network" className="text-emerald-400/70 hover:text-emerald-400 text-sm font-medium transition-colors">
-            View network →
-          </Link>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {AGENTS.map((agent, index) => {
+      {/* ── Agent Health Bars ── */}
+      <div className="mb-8">
+        <h2 className="font-arcade text-[10px] text-white/40 mb-4 tracking-widest">
+          AGENT STATUS
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {AGENTS.map(agent => {
             const agentStatus = statusMap[agent.id]
-            const derivedStatus = agentStatus ? deriveStatus(agentStatus) : 'idle'
-            const currentTask = agentStatus?.current_task || tasks.find(t => t.owner === agent.id && t.status === 'in_progress')?.task || null
-            const lastSeen = agentStatus?.last_heartbeat ? timeAgo(agentStatus.last_heartbeat) : null
-            const model = agentStatus?.model || null
+            const derived = agentStatus ? deriveStatus(agentStatus) : 'offline'
+            const colors = AGENT_COLORS[agent.id] || AGENT_COLORS.max
+            const currentTask = agentStatus?.current_task || null
 
             return (
-              <div 
+              <Link
                 key={agent.id}
-                style={{ 
-                  animation: `fadeInUp 0.6s ease-out ${index * 0.1}s both` 
+                href="/agents"
+                className={`
+                  arcade-card p-4 group cursor-pointer
+                  hover:border-opacity-40 transition-all duration-300
+                `}
+                style={{
+                  borderColor: derived === 'active' ? colors.neon + '30' : undefined,
                 }}
-                className="
-                  group relative
-                  bg-white/[0.03] backdrop-blur-sm
-                  rounded-2xl p-6 
-                  border border-white/[0.08]
-                  hover:border-emerald-500/30 hover:bg-white/[0.05]
-                  transition-all duration-500
-                  shadow-lg shadow-black/20
-                "
               >
-                {/* Status glow overlay */}
-                {derivedStatus === 'active' && (
-                  <div className="absolute inset-0 rounded-2xl bg-emerald-500/5 ring-1 ring-emerald-500/20 pointer-events-none" />
-                )}
-                
-                <div className="relative flex items-start gap-4 mb-4">
-                  <div className="relative">
-                    <img
-                      src={agent.avatar}
-                      alt={agent.name}
-                      className={`
-                        w-14 h-14 rounded-full 
-                        ring-2 transition-all duration-300
-                        ${derivedStatus === 'active' 
-                          ? 'ring-emerald-500/50 shadow-lg shadow-emerald-500/20' 
-                          : 'ring-white/10'}
-                      `}
-                    />
-                    {/* Online indicator dot */}
-                    {derivedStatus === 'active' && (
-                      <span className="
-                        absolute bottom-0 right-0 
-                        w-4 h-4 bg-emerald-400 rounded-full 
-                        ring-2 ring-[#0A0A0A]
-                        animate-pulse
-                      " />
-                    )}
-                  </div>
-                  
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">{agent.emoji}</span>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-display text-base font-semibold text-white">
-                        {agent.name}
-                      </h3>
-                      <StatusBadge status={derivedStatus} />
+                    <div className="flex items-center gap-2">
+                      <span className="font-arcade text-[8px] text-white/70 truncate">
+                        {agent.name.toUpperCase()}
+                      </span>
                     </div>
-                    <p className="text-white/50 text-sm">{agent.role}</p>
-                    {model && (
-                      <p className="text-white/30 text-xs mt-1 font-mono tracking-tight">
-                        {formatModel(model)}
-                      </p>
-                    )}
+                    <p className="text-white/20 text-[10px] font-mono truncate">
+                      {derived === 'active' && currentTask
+                        ? currentTask.slice(0, 30)
+                        : derived.toUpperCase()
+                      }
+                    </p>
                   </div>
                 </div>
-
-                {/* Current task with better styling */}
-                <div className="min-h-[60px] mb-3">
-                  {currentTask ? (
-                    <div className="
-                      p-3 rounded-lg 
-                      bg-emerald-500/5 border border-emerald-500/10
-                    ">
-                      <p className="text-emerald-400/90 text-sm leading-relaxed">
-                        {currentTask}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-white/20 text-sm italic">No active task</p>
-                  )}
-                </div>
-
-                {lastSeen && (
-                  <p className="text-white/30 text-xs pt-3 border-t border-white/[0.06]">
-                    Last seen {lastSeen}
-                  </p>
-                )}
-              </div>
+                <HealthBar status={derived} color={colors.neon} />
+              </Link>
             )
           })}
         </div>
       </div>
 
-      {/* Improvements Section */}
+      {/* ── Pending Decisions ── */}
       {pendingImprovements.length > 0 && (
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-display text-2xl font-semibold tracking-tight text-white">
-              Pending Improvements
-              <span className="ml-3 px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 text-sm font-bold">
-                {pendingImprovements.length}
-              </span>
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 gap-4">
-            {pendingImprovements.slice(0, 5).map(improvement => (
-              <div 
-                key={improvement.id} 
-                className="
-                  bg-white/[0.03] backdrop-blur-sm 
-                  rounded-2xl p-6 
-                  border border-white/[0.08]
-                  hover:border-emerald-500/20 
-                  transition-all duration-300
-                  shadow-lg shadow-black/20
-                "
-              >
-                <div className="flex items-start justify-between gap-6">
+        <div className="mb-8">
+          <h2 className="font-arcade text-[10px] text-neon-amber mb-4 tracking-widest flex items-center gap-2">
+            ⚠ PENDING DECISIONS
+            <span className="px-2 py-0.5 bg-neon-amber/10 text-neon-amber rounded text-[9px]">
+              {pendingImprovements.length}
+            </span>
+          </h2>
+          <div className="space-y-3">
+            {pendingImprovements.slice(0, 3).map(imp => (
+              <div key={imp.id} className="arcade-card p-4">
+                <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-3">
-                      <h3 className="text-white font-semibold text-base">{improvement.title}</h3>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        improvement.impact === 'high' ? 'bg-red-500/15 text-red-400' :
-                        improvement.impact === 'medium' ? 'bg-orange-500/15 text-orange-400' :
-                        'bg-blue-500/15 text-blue-400'
+                    <h3 className="text-white/80 text-sm font-mono mb-1">{imp.title}</h3>
+                    {imp.description && (
+                      <p className="text-white/30 text-xs line-clamp-2">{imp.description}</p>
+                    )}
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono ${
+                        imp.impact === 'high' ? 'bg-neon-pink/10 text-neon-pink' :
+                        imp.impact === 'medium' ? 'bg-neon-amber/10 text-neon-amber' :
+                        'bg-neon-blue/10 text-neon-blue'
                       }`}>
-                        {improvement.impact} impact
+                        {imp.impact.toUpperCase()}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        improvement.risk === 'low' ? 'bg-emerald-500/15 text-emerald-400' :
-                        improvement.risk === 'medium' ? 'bg-yellow-500/15 text-yellow-400' :
-                        'bg-red-500/15 text-red-400'
+                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono ${
+                        imp.risk === 'low' ? 'bg-neon-green/10 text-neon-green' :
+                        imp.risk === 'medium' ? 'bg-neon-amber/10 text-neon-amber' :
+                        'bg-neon-pink/10 text-neon-pink'
                       }`}>
-                        {improvement.risk} risk
+                        {imp.risk.toUpperCase()} RISK
                       </span>
                     </div>
-                    {improvement.description && (
-                      <p className="text-white/60 text-sm leading-relaxed mb-3">{improvement.description}</p>
-                    )}
-                    {improvement.owner && (
-                      <p className="text-white/30 text-xs">Owner: {improvement.owner}</p>
-                    )}
                   </div>
-                  <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
                     <button
-                      onClick={() => handleImprovementAction(improvement.id, 'approve')}
-                      className="px-4 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-sm font-medium transition-colors"
+                      onClick={() => handleImprovementAction(imp.id, 'approve')}
+                      className="px-3 py-1.5 rounded bg-neon-green/10 hover:bg-neon-green/20 text-neon-green text-[10px] font-mono border border-neon-green/20 transition-all"
                     >
-                      Approve
+                      APPROVE
                     </button>
                     <button
-                      onClick={() => handleImprovementAction(improvement.id, 'reject')}
-                      className="px-4 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 text-sm font-medium transition-colors"
+                      onClick={() => handleImprovementAction(imp.id, 'reject')}
+                      className="px-3 py-1.5 rounded bg-neon-pink/10 hover:bg-neon-pink/20 text-neon-pink text-[10px] font-mono border border-neon-pink/20 transition-all"
                     >
-                      Reject
+                      REJECT
                     </button>
                   </div>
                 </div>
@@ -281,106 +227,106 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Tasks & Blockers Split */}
-      <div id="tasks" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Tasks (2/3 width) */}
+      {/* ── Tasks + Blockers Split ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Tasks (2/3) */}
         <div className="lg:col-span-2">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-display text-2xl font-semibold tracking-tight text-white">Tasks</h2>
-          </div>
+          <h2 className="font-arcade text-[10px] text-white/40 mb-4 tracking-widest">
+            RECENT MISSIONS
+          </h2>
           {tasksLoading ? (
-            <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl border border-white/[0.08] overflow-hidden shadow-lg shadow-black/20">
-              <div className="divide-y divide-white/[0.06]">
-                {[...Array(5)].map((_, i) => <TaskCardSkeleton key={i} />)}
-              </div>
+            <div className="arcade-card overflow-hidden">
+              {[...Array(5)].map((_, i) => <TaskCardSkeleton key={i} />)}
             </div>
           ) : tasks.length === 0 ? (
-            <EmptyState 
-              icon="◷"
-              title="No tasks yet"
-              description="Tasks will appear here once agents start working"
+            <EmptyState
+              icon="📡"
+              title="NO MISSIONS"
+              description="INSERT COIN TO CONTINUE"
             />
           ) : (
-            <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl border border-white/[0.08] overflow-hidden shadow-lg shadow-black/20">
-              <div className="divide-y divide-white/[0.06]">
-                {tasks.slice(0, 12).map(task => {
-                  const ownerMeta = AGENT_MAP[task.owner]
-                  return (
-                    <div key={task.id} className="p-5 hover:bg-white/[0.03] transition-colors">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium mb-2 ${task.status === 'done' ? 'text-white/30 line-through' : 'text-white/90'}`}>
-                            {task.task}
-                          </p>
-                          {task.notes && (
-                            <p className="text-white/30 text-xs mb-3">{task.notes}</p>
-                          )}
-                          <div className="flex items-center gap-3 flex-wrap">
-                            {ownerMeta?.avatar && (
-                              <div className="flex items-center gap-1.5">
-                                <img src={ownerMeta.avatar} alt="" className="w-4 h-4 rounded-full" />
-                                <span className="text-white/40 text-xs">{ownerMeta.name}</span>
-                              </div>
-                            )}
-                            <span className="text-white/25 text-xs">{task.project}</span>
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                              task.priority === 'high' ? 'bg-orange-500/15 text-orange-400' :
-                              task.priority === 'critical' ? 'bg-red-500/15 text-red-400' :
-                              'bg-white/[0.06] text-white/40'
-                            }`}>
-                              {task.priority}
+            <div className="arcade-card overflow-hidden divide-y divide-arcade-border">
+              {tasks.slice(0, 10).map(task => {
+                const ownerMeta = AGENT_MAP[task.owner]
+                const ownerColor = AGENT_COLORS[task.owner]?.neon || '#fff'
+                const sc = STATUS_COLORS[task.status]
+
+                return (
+                  <div key={task.id} className="p-4 hover:bg-white/[0.02] transition-colors">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-mono mb-1.5 ${
+                          task.status === 'done' ? 'text-white/20 line-through' : 'text-white/80'
+                        }`}>
+                          {task.task}
+                        </p>
+                        <div className="flex items-center gap-3 text-[10px] font-mono">
+                          {ownerMeta && (
+                            <span style={{ color: ownerColor + 'AA' }}>
+                              {ownerMeta.emoji} {ownerMeta.name}
                             </span>
-                          </div>
-                        </div>
-                        <div>
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium ${
-                            STATUS_COLORS[task.status]?.bg || 'bg-white/5'
-                          } ${STATUS_COLORS[task.status]?.text || 'text-white/40'}`}>
-                            {task.status.replace('_', ' ')}
-                          </span>
+                          )}
+                          <span className="text-white/20">{task.project}</span>
+                          {task.priority && task.priority !== 'medium' && (
+                            <span className={`px-1.5 py-0.5 rounded ${
+                              task.priority === 'high' || task.priority === 'critical'
+                                ? 'bg-neon-pink/10 text-neon-pink'
+                                : 'bg-white/5 text-white/30'
+                            }`}>
+                              {task.priority.toUpperCase()}
+                            </span>
+                          )}
                         </div>
                       </div>
+                      <span className={`
+                        px-2 py-0.5 rounded text-[9px] font-mono uppercase
+                        ${sc?.bg || 'bg-white/5'} ${sc?.text || 'text-white/30'}
+                      `}>
+                        {task.status.replace('_', ' ')}
+                      </span>
                     </div>
-                  )
-                })}
-              </div>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
 
-        {/* Sidebar: Blockers (1/3 width) */}
+        {/* Blockers (1/3) */}
         <div>
-          <h2 className="font-display text-2xl font-semibold tracking-tight text-white mb-6">
-            Blockers
+          <h2 className="font-arcade text-[10px] text-white/40 mb-4 tracking-widest flex items-center gap-2">
+            BLOCKERS
             {blockers.length > 0 && (
-              <span className="ml-2 px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 text-xs font-bold">
+              <span className="px-1.5 py-0.5 bg-neon-pink/10 text-neon-pink rounded text-[9px]">
                 {blockers.length}
               </span>
             )}
           </h2>
-          <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl border border-white/[0.08] overflow-hidden shadow-lg shadow-black/20">
+          <div className="arcade-card overflow-hidden">
             {blockersLoading ? (
               <div className="p-8 text-center">
-                <div className="w-8 h-8 mx-auto mb-3 rounded-full border-2 border-white/10 border-t-emerald-500 animate-spin" />
-                <p className="text-white/40 text-sm">Loading...</p>
+                <p className="font-arcade text-[8px] text-white/20 loading-text">SCANNING</p>
               </div>
             ) : blockers.length === 0 ? (
               <div className="p-8 text-center">
-                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-emerald-500/10 flex items-center justify-center text-2xl">
-                  ✓
-                </div>
-                <p className="text-emerald-400/60 text-sm font-medium">All clear</p>
-                <p className="text-white/20 text-xs mt-1">No blockers</p>
+                <p className="text-2xl mb-2 opacity-30">✓</p>
+                <p className="font-arcade text-[8px] text-neon-green/40">ALL CLEAR</p>
               </div>
             ) : (
-              <div className="divide-y divide-white/[0.06]">
+              <div className="divide-y divide-arcade-border">
                 {blockers.map(b => (
-                  <div key={b.id} className="p-5">
-                    <p className="text-white/80 text-sm leading-relaxed mb-3">{b.description}</p>
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-red-400/70 text-xs">Blocking: {b.blocking_who}</span>
+                  <div key={b.id} className="p-4">
+                    <p className="text-white/60 text-sm font-mono mb-2 leading-relaxed">
+                      {b.description}
+                    </p>
+                    <div className="flex flex-col gap-1 text-[10px] font-mono">
+                      <span className="text-neon-pink/60">
+                        BLOCKING: {b.blocking_who}
+                      </span>
                       {b.needs_input_from && (
-                        <span className="text-yellow-400/70 text-xs">Needs: {b.needs_input_from}</span>
+                        <span className="text-neon-amber/60">
+                          NEEDS: {b.needs_input_from}
+                        </span>
                       )}
                     </div>
                   </div>

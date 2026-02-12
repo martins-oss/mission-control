@@ -1,81 +1,90 @@
-export function HeroStatCard({ 
-  label, 
-  value, 
+'use client'
+import { useEffect, useState } from 'react'
+
+type NeonColor = 'green' | 'pink' | 'blue' | 'amber' | 'purple' | 'gray'
+
+const COLOR_MAP: Record<NeonColor, {
+  border: string
+  bg: string
+  text: string
+  glow: string
+  glowClass: string
+}> = {
+  green:  { border: 'border-neon-green/30',  bg: 'bg-neon-green/5',  text: 'text-neon-green',  glow: 'text-glow-green',  glowClass: 'glow-green' },
+  pink:   { border: 'border-neon-pink/30',   bg: 'bg-neon-pink/5',   text: 'text-neon-pink',   glow: 'text-glow-pink',   glowClass: 'glow-pink' },
+  blue:   { border: 'border-neon-blue/30',   bg: 'bg-neon-blue/5',   text: 'text-neon-blue',   glow: 'text-glow-blue',   glowClass: 'glow-blue' },
+  amber:  { border: 'border-neon-amber/30',  bg: 'bg-neon-amber/5',  text: 'text-neon-amber',  glow: 'text-glow-amber',  glowClass: 'glow-amber' },
+  purple: { border: 'border-neon-purple/30', bg: 'bg-neon-purple/5', text: 'text-neon-purple', glow: 'text-glow-purple', glowClass: 'glow-purple' },
+  gray:   { border: 'border-white/10',       bg: 'bg-white/[0.02]',  text: 'text-white/50',    glow: '',                 glowClass: '' },
+}
+
+function AnimatedNumber({ value }: { value: number | string }) {
+  const [display, setDisplay] = useState(0)
+  const target = typeof value === 'number' ? value : parseInt(value) || 0
+
+  useEffect(() => {
+    if (typeof value !== 'number') { setDisplay(target); return }
+    const start = 0
+    const duration = 400
+    const startTime = Date.now()
+    const tick = () => {
+      const elapsed = Date.now() - startTime
+      const progress = Math.min(elapsed / duration, 1)
+      const eased = 1 - Math.pow(1 - progress, 3)
+      setDisplay(Math.round(start + (target - start) * eased))
+      if (progress < 1) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  }, [target, value])
+
+  return <>{typeof value === 'number' ? display : value}</>
+}
+
+export function HeroStatCard({
+  label,
+  value,
   icon = '◉',
-  accentColor = 'emerald',
-  href = '#',
+  color = 'green',
+  suffix,
+  href,
 }: {
   label: string
   value: string | number
   icon?: string
-  accentColor?: 'emerald' | 'red' | 'blue' | 'gray'
+  color?: NeonColor
+  // legacy compat
+  accentColor?: string
+  suffix?: string
   href?: string
 }) {
-  const colorMap = {
-    emerald: {
-      gradient: 'from-emerald-500/10 to-emerald-500/0',
-      border: 'border-emerald-500/30',
-      text: 'text-emerald-400',
-      glow: 'shadow-emerald-500/20',
-    },
-    red: {
-      gradient: 'from-red-500/10 to-red-500/0',
-      border: 'border-red-500/30',
-      text: 'text-red-400',
-      glow: 'shadow-red-500/20',
-    },
-    blue: {
-      gradient: 'from-blue-500/10 to-blue-500/0',
-      border: 'border-blue-500/30',
-      text: 'text-blue-400',
-      glow: 'shadow-blue-500/20',
-    },
-    gray: {
-      gradient: 'from-white/5 to-white/0',
-      border: 'border-white/10',
-      text: 'text-white/50',
-      glow: 'shadow-black/20',
-    },
-  }
-  
-  const colors = colorMap[accentColor]
-  
-  const Component = href ? 'a' : 'div'
-  
-  return (
-    <Component
-      href={href !== '#' ? href : undefined}
+  const c = COLOR_MAP[color] || COLOR_MAP.green
+
+  const inner = (
+    <div
       className={`
-        block group relative overflow-hidden
-        bg-gradient-to-br ${colors.gradient}
-        backdrop-blur-sm rounded-2xl p-6
-        border ${colors.border}
-        hover:scale-[1.02] transition-all duration-300
-        ${colors.glow} shadow-lg
-        ${href !== '#' ? 'cursor-pointer' : ''}
+        arcade-card p-5 relative overflow-hidden
+        ${c.border} ${c.bg}
+        hover:${c.glowClass}
+        transition-all duration-300 group
       `}
     >
-      <div className="relative z-10">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-white/40 text-xs uppercase tracking-wider font-semibold">
-            {label}
-          </p>
-          <span className="text-2xl opacity-20 group-hover:opacity-30 transition-opacity">
-            {icon}
-          </span>
-        </div>
-        <p className={`font-display text-5xl font-bold ${colors.text} tracking-tight`}>
-          {value}
+      <div className="flex items-center justify-between mb-3">
+        <p className="font-arcade text-[8px] text-white/30 uppercase tracking-widest">
+          {label}
         </p>
+        <span className="text-lg opacity-30 group-hover:opacity-50 transition-opacity">
+          {icon}
+        </span>
       </div>
-      
-      {/* Decorative gradient orb */}
-      <div className={`
-        absolute -right-8 -bottom-8 w-32 h-32 
-        bg-gradient-to-br ${colors.gradient}
-        rounded-full blur-2xl opacity-30
-        group-hover:opacity-40 transition-opacity
-      `} />
-    </Component>
+      <p className={`font-arcade text-2xl ${c.text} ${c.glow} tracking-tight`}>
+        <AnimatedNumber value={value} />
+        {suffix && <span className="text-sm ml-1 opacity-60">{suffix}</span>}
+      </p>
+    </div>
   )
+
+  if (href && href !== '#') {
+    return <a href={href} className="block">{inner}</a>
+  }
+  return inner
 }

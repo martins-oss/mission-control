@@ -1,48 +1,51 @@
 export function StatusBadge({ status }: { status: string }) {
-  const configs = {
+  const configs: Record<string, {
+    bg: string; text: string; ring: string; dot: string; pulse: boolean
+  }> = {
     active: {
-      bg: 'bg-emerald-500/15',
-      text: 'text-emerald-400',
-      ring: 'ring-emerald-500/30',
-      dot: 'bg-emerald-400',
-      glow: 'shadow-emerald-500/50',
+      bg: 'bg-neon-green/10',
+      text: 'text-neon-green',
+      ring: 'ring-neon-green/30',
+      dot: 'bg-neon-green',
+      pulse: true,
     },
     idle: {
-      bg: 'bg-white/5',
-      text: 'text-white/40',
-      ring: 'ring-white/10',
-      dot: 'bg-white/30',
-      glow: '',
+      bg: 'bg-neon-amber/10',
+      text: 'text-neon-amber',
+      ring: 'ring-neon-amber/20',
+      dot: 'bg-neon-amber',
+      pulse: false,
     },
     offline: {
-      bg: 'bg-red-500/10',
-      text: 'text-red-400/70',
-      ring: 'ring-red-500/20',
-      dot: 'bg-red-400/50',
-      glow: '',
+      bg: 'bg-white/5',
+      text: 'text-white/30',
+      ring: 'ring-white/10',
+      dot: 'bg-white/20',
+      pulse: false,
     },
-  } as const
-  
-  const config = configs[status as keyof typeof configs] || configs.idle
-  
+    error: {
+      bg: 'bg-neon-pink/10',
+      text: 'text-neon-pink',
+      ring: 'ring-neon-pink/20',
+      dot: 'bg-neon-pink',
+      pulse: true,
+    },
+  }
+
+  const config = configs[status] || configs.idle
+
   return (
     <span className={`
-      inline-flex items-center gap-1.5 
-      px-3 py-1.5 rounded-full 
-      text-xs font-semibold tracking-wide
+      inline-flex items-center gap-1.5
+      px-2 py-0.5 rounded
+      text-[10px] font-mono uppercase tracking-wider
       ${config.bg} ${config.text}
       ring-1 ${config.ring}
-      transition-all duration-300
     `}>
       <span className={`
-        relative w-2 h-2 rounded-full ${config.dot}
-        ${status === 'active' ? 'animate-pulse' : ''}
-        ${config.glow ? `shadow-sm ${config.glow}` : ''}
-      `}>
-        {status === 'active' && (
-          <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-75" />
-        )}
-      </span>
+        w-1.5 h-1.5 rounded-full ${config.dot}
+        ${config.pulse ? 'animate-pulse' : ''}
+      `} />
       {status}
     </span>
   )
