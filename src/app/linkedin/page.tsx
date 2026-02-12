@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import AppShell from '@/components/AppShell'
 import LinkedInCalendar from '@/components/LinkedInCalendar'
@@ -29,7 +29,7 @@ function PostStatusBadge({ status }: { status: string }) {
 
 type View = 'queue' | 'calendar'
 
-export default function LinkedInPage() {
+function LinkedInPageContent() {
   const searchParams = useSearchParams()
   const { posts, loading, refresh } = useLinkedInPosts()
   const { auth, loading: authLoading } = useLinkedInAuth()
@@ -529,5 +529,19 @@ function PostCard({
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LinkedInPage() {
+  return (
+    <Suspense fallback={
+      <AppShell>
+        <div className="flex items-center justify-center h-screen">
+          <p className="text-white/40">Loading...</p>
+        </div>
+      </AppShell>
+    }>
+      <LinkedInPageContent />
+    </Suspense>
   )
 }
