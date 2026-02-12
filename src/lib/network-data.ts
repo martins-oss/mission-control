@@ -110,6 +110,10 @@ export function generateNetworkLayout() {
     type: 'default',
     animated: true,
     style: { stroke: '#34D399', strokeWidth: 2, opacity: 0.6 },
+    markerEnd: {
+      type: 'arrowclosed' as const,
+      color: 'rgba(52, 211, 153, 0.6)',
+    },
   }))
 
   // Edges: agent to service connections
@@ -120,6 +124,10 @@ export function generateNetworkLayout() {
       target: `svc-${service.id}`,
       type: 'default',
       style: { stroke: '#ffffff', strokeWidth: 1, opacity: 0.15 },
+      markerEnd: {
+        type: 'arrowclosed' as const,
+        color: 'rgba(255, 255, 255, 0.15)',
+      },
     }))
   )
 

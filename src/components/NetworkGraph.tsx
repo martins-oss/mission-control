@@ -36,13 +36,13 @@ function AgentNode({ data }: { data: AgentNodeData }) {
   const imgSize = data.isCenter ? 'w-16 h-16' : 'w-12 h-12'
 
   return (
-    <div className="flex flex-col items-center group cursor-pointer">
+    <div className="flex flex-col items-center group cursor-pointer hover:scale-110 transition-transform duration-300">
       <Handle type="target" position={Position.Top} className="!bg-transparent !border-0 !w-0 !h-0" />
       <Handle type="source" position={Position.Bottom} className="!bg-transparent !border-0 !w-0 !h-0" />
 
       {/* Avatar with status ring */}
       <div
-        className={`${ringSize} rounded-full flex items-center justify-center transition-all duration-300`}
+        className={`${ringSize} rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-105`}
         style={{
           background: `radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%)`,
           boxShadow: status === 'active' ? `0 0 20px ${statusColor}30, 0 0 40px ${statusColor}10` : 'none',
@@ -125,14 +125,14 @@ function ServiceNodeComponent({ data }: { data: ServiceNode }) {
     : 'border-white/10 bg-white/[0.03]'
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center group hover:scale-110 transition-transform duration-300 cursor-pointer">
       <Handle type="target" position={Position.Top} className="!bg-transparent !border-0 !w-0 !h-0" />
       <Handle type="source" position={Position.Bottom} className="!bg-transparent !border-0 !w-0 !h-0" />
 
-      <div className={`w-10 h-10 rounded-lg border ${categoryColor} flex items-center justify-center text-lg`}>
+      <div className={`w-10 h-10 rounded-lg border ${categoryColor} flex items-center justify-center text-lg transition-all duration-300 group-hover:border-opacity-60`}>
         {data.icon}
       </div>
-      <p className="text-white/40 text-[9px] mt-1 text-center font-medium">{data.name}</p>
+      <p className="text-white/40 text-[9px] mt-1 text-center font-medium group-hover:text-white/60 transition-colors">{data.name}</p>
     </div>
   )
 }

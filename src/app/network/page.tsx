@@ -17,10 +17,10 @@ const NetworkGraph = dynamic(() => import('@/components/NetworkGraph'), {
 export default function NetworkPage() {
   return (
     <AppShell>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-xl font-bold text-white">Agent Network</h1>
-          <p className="text-white/40 text-sm mt-0.5">System architecture and connections</p>
+          <h1 className="font-display text-4xl font-bold tracking-tight text-white">Agent Network</h1>
+          <p className="text-white/60 text-lg mt-2">System architecture and connections</p>
         </div>
       </div>
 
@@ -28,10 +28,10 @@ export default function NetworkPage() {
       <NetworkGraph />
 
       {/* Legend */}
-      <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-6">
         {/* Agents */}
-        <div className="bg-white/[0.03] rounded-xl p-4 border border-white/[0.06]">
-          <h3 className="text-white/50 text-[10px] uppercase tracking-wider font-medium mb-3">Agents</h3>
+        <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl p-6 border border-white/[0.08] shadow-lg shadow-black/20">
+          <h3 className="font-display text-white/60 text-xs uppercase tracking-wider font-semibold mb-4">Agents</h3>
           <div className="space-y-2">
             {AGENTS.map(a => (
               <div key={a.id} className="flex items-center gap-2">
