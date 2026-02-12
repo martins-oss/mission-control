@@ -2,6 +2,7 @@
 import AppShell from '@/components/AppShell'
 import { AGENTS } from '@/lib/constants'
 import { useAgentStatus } from '@/lib/hooks'
+import { SYSTEM_CONFIG } from '@/config/system'
 
 const SKILLS = [
   'github', 'gemini', 'xai', 'gog', 'notion', 'weather',
@@ -12,19 +13,20 @@ const SKILLS = [
 
 const FOLDER_STRUCTURE = [
   { path: '~/.openclaw/', type: 'dir', depth: 0, desc: 'OpenClaw root' },
-  { path: 'gateway.yaml', type: 'file', depth: 1, desc: 'Main configuration' },
+  { path: 'openclaw.json', type: 'file', depth: 1, desc: 'Main configuration' },
   { path: 'agents/', type: 'dir', depth: 1, desc: '' },
   { path: 'main/', type: 'dir', depth: 2, desc: 'Iris — Orchestrator' },
   { path: 'max/', type: 'dir', depth: 2, desc: 'Max — Builder' },
   { path: 'dash/', type: 'dir', depth: 2, desc: 'Dash — Brand & Growth' },
   { path: 'atlas/', type: 'dir', depth: 2, desc: 'Atlas — Ops' },
   { path: 'amber/', type: 'dir', depth: 2, desc: 'Amber — Research' },
-  { path: 'workspace-main/', type: 'dir', depth: 1, desc: 'Iris workspace' },
+  { path: 'workspace/', type: 'dir', depth: 1, desc: 'Iris workspace' },
   { path: 'SOUL.md, AGENTS.md, MEMORY.md ...', type: 'file', depth: 2, desc: 'Agent identity & memory' },
   { path: 'workspace-max/', type: 'dir', depth: 1, desc: 'Max workspace' },
   { path: 'workspace-dash/', type: 'dir', depth: 1, desc: 'Dash workspace' },
   { path: 'workspace-atlas/', type: 'dir', depth: 1, desc: 'Atlas workspace' },
   { path: 'workspace-amber/', type: 'dir', depth: 1, desc: 'Amber workspace' },
+  { path: 'workspace-pixel/', type: 'dir', depth: 1, desc: 'Pixel workspace' },
   { path: 'shared/', type: 'dir', depth: 1, desc: 'Cross-agent shared directory' },
   { path: 'projects/', type: 'dir', depth: 2, desc: 'Project docs (doit, mission-control)' },
   { path: 'drafts/', type: 'dir', depth: 2, desc: 'Agent draft outputs' },
@@ -72,7 +74,7 @@ export default function NetworkPage() {
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-white text-sm font-medium">OpenClaw v2026.2.6-3</p>
+              <p className="text-white text-sm font-medium">OpenClaw v{SYSTEM_CONFIG.version}</p>
               <p className="text-white/40 text-xs font-mono mt-0.5">gateway.dothework.fit:18789</p>
             </div>
             <div className="text-right">
@@ -209,7 +211,7 @@ export default function NetworkPage() {
       {/* Version */}
       <div className="mt-6 text-center">
         <p className="text-white/20 text-xs">
-          OpenClaw v2026.2.6-3 · Node v22.22.0 · iris-gateway (DigitalOcean)
+          OpenClaw v{SYSTEM_CONFIG.version} · Node v22.22.0 · iris-gateway (DigitalOcean)
         </p>
       </div>
     </AppShell>

@@ -17,20 +17,20 @@ export const AGENT_CAPABILITIES: Record<string, AgentCapabilities> = {
     apis: ['GitHub', 'Supabase', 'Vercel', 'Cloudflare'],
   },
   dash: {
-    tools: ['LinkedIn', 'xAI', 'Web Search', 'Content Gen'],
-    apis: ['LinkedIn API', 'xAI', 'Brave Search'],
+    tools: ['LinkedIn', 'Web Search', 'Brave Search'],
+    apis: ['LinkedIn API', 'Brave Search'],
   },
   atlas: {
-    tools: ['Notion', 'Slack', 'Gmail', 'Sheets'],
-    apis: ['Notion', 'Slack', 'Google Workspace'],
+    tools: ['Notion', 'Slack', 'Gmail', 'Web Search'],
+    apis: ['Notion', 'Slack', 'Google Workspace', 'Brave Search'],
   },
   amber: {
-    tools: ['Web Search', 'Tavily', 'DeepWiki', 'xAI'],
-    apis: ['Tavily', 'Brave Search', 'xAI', 'DeepWiki'],
+    tools: ['Web Search', 'Tavily', 'DeepWiki'],
+    apis: ['Tavily', 'Brave Search', 'DeepWiki'],
   },
   pixel: {
-    tools: ['xAI', 'Web Search', 'Image Gen'],
-    apis: ['xAI (Image/Video)', 'Brave Search'],
+    tools: ['Web Search', 'xAI Image Gen'],
+    apis: ['xAI (Image Gen skill)', 'Brave Search'],
   },
 }
 
@@ -47,7 +47,7 @@ export const SERVICES: ServiceNode[] = [
   { id: 'github', name: 'GitHub', icon: '◈', category: 'platform', connectedAgents: ['max'] },
   { id: 'vercel', name: 'Vercel', icon: '▲', category: 'infra', connectedAgents: ['max'] },
   { id: 'linkedin', name: 'LinkedIn', icon: '◉', category: 'api', connectedAgents: ['dash'] },
-  { id: 'xai', name: 'xAI / Grok', icon: '✦', category: 'api', connectedAgents: ['dash', 'amber', 'pixel'] },
+  { id: 'xai', name: 'xAI / Grok', icon: '✦', category: 'api', connectedAgents: ['pixel'] },
   { id: 'google', name: 'Google WS', icon: '◎', category: 'platform', connectedAgents: ['main', 'atlas'] },
   { id: 'notion', name: 'Notion', icon: '◻', category: 'platform', connectedAgents: ['atlas'] },
   { id: 'slack', name: 'Slack', icon: '◼', category: 'platform', connectedAgents: ['atlas'] },
