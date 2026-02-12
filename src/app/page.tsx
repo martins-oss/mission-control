@@ -4,6 +4,7 @@ import Link from 'next/link'
 import AppShell from '@/components/AppShell'
 import { StatusBadge } from '@/components/StatusBadge'
 import { HeroStatCard } from '@/components/HeroStatCard'
+import { EmptyState, AgentCardSkeleton, TaskCardSkeleton } from '@/components/EmptyState'
 import { useAgentStatus, deriveStatus, useTasks, useBlockers, useImprovements } from '@/lib/hooks'
 import { AGENTS, AGENT_MAP, STATUS_COLORS, formatModel } from '@/lib/constants'
 import type { Task, AgentStatus } from '@/lib/supabase'
@@ -288,13 +289,17 @@ export default function Dashboard() {
             <h2 className="font-display text-2xl font-semibold tracking-tight text-white">Tasks</h2>
           </div>
           {tasksLoading ? (
-            <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl p-12 border border-white/[0.08] text-center text-white/40 shadow-lg shadow-black/20">
-              Loading tasks...
+            <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl border border-white/[0.08] overflow-hidden shadow-lg shadow-black/20">
+              <div className="divide-y divide-white/[0.06]">
+                {[...Array(5)].map((_, i) => <TaskCardSkeleton key={i} />)}
+              </div>
             </div>
           ) : tasks.length === 0 ? (
-            <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl p-12 border border-white/[0.08] text-center text-white/40 shadow-lg shadow-black/20">
-              No tasks
-            </div>
+            <EmptyState 
+              icon="◷"
+              title="No tasks yet"
+              description="Tasks will appear here once agents start working"
+            />
           ) : (
             <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl border border-white/[0.08] overflow-hidden shadow-lg shadow-black/20">
               <div className="divide-y divide-white/[0.06]">
@@ -355,9 +360,15 @@ export default function Dashboard() {
           </h2>
           <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl border border-white/[0.08] overflow-hidden shadow-lg shadow-black/20">
             {blockersLoading ? (
-              <div className="p-8 text-center text-white/40 text-sm">Loading...</div>
+              <div className="p-8 text-center">
+                <div className="w-8 h-8 mx-auto mb-3 rounded-full border-2 border-white/10 border-t-emerald-500 animate-spin" />
+                <p className="text-white/40 text-sm">Loading...</p>
+              </div>
             ) : blockers.length === 0 ? (
               <div className="p-8 text-center">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-emerald-500/10 flex items-center justify-center text-2xl">
+                  ✓
+                </div>
                 <p className="text-emerald-400/60 text-sm font-medium">All clear</p>
                 <p className="text-white/20 text-xs mt-1">No blockers</p>
               </div>
