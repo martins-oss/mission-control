@@ -1,23 +1,23 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Press_Start_2P, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 
-const inter = Inter({ 
+const arcade = Press_Start_2P({
+  weight: '400',
   subsets: ['latin'],
-  variable: '--font-inter',
+  variable: '--font-arcade',
   display: 'swap',
 })
 
-const interDisplay = Inter({ 
+const mono = JetBrains_Mono({
   subsets: ['latin'],
-  weight: ['600', '700', '800'],
-  variable: '--font-inter-display',
+  variable: '--font-mono',
   display: 'swap',
 })
 
 export const metadata: Metadata = {
   title: 'Mission Control',
-  description: 'Agent team dashboard',
+  description: 'Agent team command center',
 }
 
 export default function RootLayout({
@@ -26,8 +26,12 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${interDisplay.variable}`}>
-      <body className={inter.className}>{children}</body>
+    <html lang="en" className={`${arcade.variable} ${mono.variable}`}>
+      <body className={`${mono.className} boot-up`}>
+        {/* CRT scanline overlay */}
+        <div className="crt-overlay" />
+        {children}
+      </body>
     </html>
   )
 }

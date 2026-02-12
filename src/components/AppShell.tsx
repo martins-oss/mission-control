@@ -2,15 +2,38 @@
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
+import { useState, useEffect } from 'react'
 
 const NAV_ITEMS = [
-  { href: '/', label: 'Dashboard', icon: '◉' },
-  { href: '/usage', label: 'Usage', icon: '◊' },
-  { href: '/cron', label: 'Cron', icon: '⏰' },
-  { href: '/improvements', label: 'Improvements', icon: '◆' },
-  { href: '/network', label: 'Network', icon: '⬡' },
-  { href: '/linkedin', label: 'LinkedIn', icon: '◈' },
+  { href: '/',          label: 'HQ',       icon: '🕹️' },
+  { href: '/agents',    label: 'Agents',   icon: '👾' },
+  { href: '/usage',     label: 'Usage',    icon: '📊' },
+  { href: '/tasks',     label: 'Tasks',    icon: '⚡' },
+  { href: '/cron',      label: 'Cron',     icon: '🔧' },
+  { href: '/ideas',     label: 'Ideas',    icon: '💡' },
+  { href: '/skills',    label: 'Skills',   icon: '🧩' },
+  { href: '/linkedin',  label: 'LinkedIn', icon: '📣' },
 ]
+
+function SystemClock() {
+  const [time, setTime] = useState('')
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date()
+      setTime(now.toLocaleTimeString('en-US', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZone: 'UTC',
+      }) + ' UTC')
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [])
+  return <span className="font-arcade text-[9px] text-neon-green/60 tracking-wider">{time}</span>
+}
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading, signOut } = useAuth(true)
@@ -18,8 +41,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
-        <div className="text-white/40">Loading...</div>
+      <main className="min-h-screen bg-arcade-black flex items-center justify-center">
+        <div className="font-arcade text-xs text-neon-green/60 loading-text">
+          LOADING MISSION CONTROL
+        </div>
       </main>
     )
   }
@@ -27,91 +52,104 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (!user) return null
 
   return (
-    <main className="min-h-screen bg-[#0A0A0A]">
-      {/* Top Nav */}
+    <main className="min-h-screen bg-arcade-black">
+      {/* ── Top Nav ── */}
       <nav className="
-        border-b border-white/[0.06] 
-        bg-[#0A0A0A]/95 backdrop-blur-xl 
+        border-b border-neon-green/10
+        bg-arcade-black/95 backdrop-blur-xl
         sticky top-0 z-50
-        shadow-2xl shadow-black/20
       ">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-10">
-              <Link 
-                href="/" 
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
+          <div className="flex items-center justify-between h-14">
+            {/* Logo + Nav */}
+            <div className="flex items-center gap-6">
+              <Link
+                href="/"
                 className="
-                  font-display text-lg font-bold tracking-tight
-                  bg-gradient-to-r from-white to-white/70
-                  bg-clip-text text-transparent
-                  hover:from-emerald-400 hover:to-emerald-300
+                  font-arcade text-[10px] tracking-wider
+                  text-neon-green text-glow-green
+                  hover:brightness-125
                   transition-all duration-300
                 "
               >
-                Mission Control
+                MISSION CONTROL
               </Link>
-              
-              <div className="flex items-center gap-1">
+
+              <div className="flex items-center gap-0.5">
                 {NAV_ITEMS.map(item => {
                   const isActive = item.href === '/'
                     ? pathname === '/'
                     : pathname.startsWith(item.href)
-                  
+
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
                       className={`
-                        relative px-4 py-2 rounded-lg 
-                        text-sm font-medium
-                        transition-all duration-300
+                        relative px-3 py-1.5 rounded
+                        font-mono text-xs
+                        transition-all duration-200
                         ${isActive
-                          ? 'text-emerald-400'
-                          : 'text-white/50 hover:text-white/80'
+                          ? 'text-neon-green bg-neon-green/10 border border-neon-green/20'
+                          : 'text-white/40 hover:text-white/70 hover:bg-white/[0.03] border border-transparent'
                         }
                       `}
                     >
-                      {/* Active indicator */}
-                      {isActive && (
-                        <span className="
-                          absolute inset-0 
-                          bg-emerald-500/10 rounded-lg 
-                          ring-1 ring-emerald-500/30
-                        " />
-                      )}
-                      
-                      <span className="relative flex items-center gap-2">
-                        <span className={`text-xs ${isActive ? 'scale-110' : ''} transition-transform`}>
-                          {item.icon}
-                        </span>
-                        {item.label}
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-[11px]">{item.icon}</span>
+                        <span className="hidden lg:inline">{item.label}</span>
                       </span>
                     </Link>
                   )
                 })}
               </div>
             </div>
+
+            {/* Right: clock + user */}
             <div className="flex items-center gap-4">
-              <span className="text-white/30 text-xs hidden sm:block">{user.email}</span>
+              <SystemClock />
+              <div className="w-px h-4 bg-white/10" />
+              <span className="text-white/20 text-[10px] font-mono hidden sm:block">
+                {user.email?.split('@')[0]}
+              </span>
               <button
                 onClick={signOut}
                 className="
-                  px-3 py-1.5 rounded-lg
-                  text-white/40 hover:text-white/60
-                  text-xs font-medium
-                  hover:bg-white/[0.04]
-                  transition-all duration-300
+                  px-2 py-1 rounded
+                  text-white/30 hover:text-neon-pink/80
+                  text-[10px] font-mono
+                  hover:bg-neon-pink/10
+                  transition-all duration-200
+                  border border-transparent hover:border-neon-pink/20
                 "
               >
-                Sign out
+                LOGOUT
               </button>
             </div>
           </div>
         </div>
       </nav>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* ── Status Bar ── */}
+      <div className="border-b border-arcade-border bg-arcade-surface/50">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
+          <div className="flex items-center h-7 gap-4 text-[10px] font-mono text-white/25 overflow-x-auto">
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 bg-neon-green rounded-full animate-glow-pulse" />
+              SYSTEM ONLINE
+            </span>
+            <span className="text-white/10">|</span>
+            <span>GATEWAY: iris-gateway</span>
+            <span className="text-white/10">|</span>
+            <span>MODEL: OPUS 4.6</span>
+            <span className="text-white/10">|</span>
+            <span>AGENTS: 6</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Content ── */}
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 animate-fade-in">
         {children}
       </div>
     </main>

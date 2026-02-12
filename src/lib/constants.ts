@@ -28,15 +28,25 @@ export const AGENT_MAP: Record<string, { name: string; emoji: string; role?: str
 }
 
 export const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-  active:      { bg: 'bg-emerald-500/15', text: 'text-emerald-400', dot: 'bg-emerald-400' },
-  idle:        { bg: 'bg-yellow-500/15',  text: 'text-yellow-400',  dot: 'bg-yellow-400' },
-  error:       { bg: 'bg-red-500/15',     text: 'text-red-400',     dot: 'bg-red-400' },
+  active:      { bg: 'bg-neon-green/15',  text: 'text-neon-green',  dot: 'bg-neon-green' },
+  idle:        { bg: 'bg-neon-amber/15',  text: 'text-neon-amber',  dot: 'bg-neon-amber' },
+  error:       { bg: 'bg-neon-pink/15',   text: 'text-neon-pink',   dot: 'bg-neon-pink' },
   offline:     { bg: 'bg-white/5',        text: 'text-white/40',    dot: 'bg-white/20' },
-  in_progress: { bg: 'bg-emerald-500/15', text: 'text-emerald-400', dot: 'bg-emerald-400' },
+  in_progress: { bg: 'bg-neon-green/15',  text: 'text-neon-green',  dot: 'bg-neon-green' },
   backlog:     { bg: 'bg-white/5',        text: 'text-white/40',    dot: 'bg-white/20' },
-  blocked:     { bg: 'bg-red-500/15',     text: 'text-red-400',     dot: 'bg-red-400' },
-  waiting:     { bg: 'bg-yellow-500/15',  text: 'text-yellow-400',  dot: 'bg-yellow-400' },
-  done:        { bg: 'bg-emerald-500/15', text: 'text-emerald-400', dot: 'bg-emerald-400' },
+  blocked:     { bg: 'bg-neon-pink/15',   text: 'text-neon-pink',   dot: 'bg-neon-pink' },
+  waiting:     { bg: 'bg-neon-amber/15',  text: 'text-neon-amber',  dot: 'bg-neon-amber' },
+  done:        { bg: 'bg-neon-green/15',  text: 'text-neon-green',  dot: 'bg-neon-green' },
+}
+
+/** Agent neon color mapping */
+export const AGENT_COLORS: Record<string, { neon: string; glow: string; tw: string }> = {
+  main:   { neon: '#B24BF3', glow: 'glow-purple',  tw: 'text-neon-purple' },
+  max:    { neon: '#FFB800', glow: 'glow-amber',   tw: 'text-neon-amber' },
+  dash:   { neon: '#FF2D7B', glow: 'glow-pink',    tw: 'text-neon-pink' },
+  atlas:  { neon: '#00D4FF', glow: 'glow-blue',    tw: 'text-neon-blue' },
+  amber:  { neon: '#39FF14', glow: 'glow-green',   tw: 'text-neon-green' },
+  pixel:  { neon: '#FF6B6B', glow: 'glow-pink',    tw: 'text-neon-pink' },
 }
 
 export const PROJECTS = [
