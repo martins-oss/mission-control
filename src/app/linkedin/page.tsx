@@ -164,7 +164,8 @@ function LinkedInPageContent() {
   }
 
   const drafts = posts.filter(p => p.status === 'draft' || p.status === 'feedback_requested')
-  const scheduled = posts.filter(p => p.status === 'approved' || p.status === 'scheduled')
+  const readyToPublish = posts.filter(p => p.status === 'approved')
+  const scheduled = posts.filter(p => p.status === 'scheduled')
   const history = posts.filter(p => p.status === 'posted' || p.status === 'failed')
 
   return (
@@ -278,10 +279,76 @@ function LinkedInPageContent() {
             </div>
           )}
 
-          {/* Scheduled / Approved */}
+          {/* Ready to Publish */}
+          {readyToPublish.length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-white/50 text-[10px] uppercase tracking-wider font-medium mb-3">
+                Ready to Publish
+                <span className="ml-2 px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-[10px] font-bold">{readyToPublish.length}</span>
+              </h2>
+              <div className="space-y-3">
+                {readyToPublish.map(post => (
+                  <div key={post.id} className="bg-white/[0.03] rounded-xl p-5 border border-emerald-500/20">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        {post.title && <h3 className="text-white font-medium text-sm">{post.title}</h3>}
+                        <PostStatusBadge status={post.status} />
+                      </div>
+                    </div>
+                    <p className="text-white/70 text-sm whitespace-pre-wrap mb-4 line-clamp-4">{post.content}</p>
+                    {post.media_urls && (post.media_urls as string[]).length > 0 && (
+                      <div className="flex gap-2 mb-4">
+                        {(post.media_urls as string[]).map((url, i) => (
+                          <img key={i} src={url} alt="" className="w-16 h-16 rounded-lg object-cover border border-white/10" />
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handlePublishNow(post.id)}
+                        disabled={actionLoading === post.id || !isConnected}
+                        className="px-4 py-2 rounded-lg bg-emerald-500/20 text-emerald-400 text-sm font-medium hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
+                      >
+                        Publish Now
+                      </button>
+                      <button
+                        onClick={() => {
+                          const dt = scheduleFor[post.id]
+                          if (!dt) return alert('Pick a time first')
+                          handleAction(post.id, {
+                            status: 'scheduled',
+                            scheduled_at: new Date(dt).toISOString(),
+                          })
+                        }}
+                        disabled={actionLoading === post.id || !scheduleFor[post.id]}
+                        className="px-4 py-2 rounded-lg bg-blue-500/15 text-blue-400 text-sm font-medium hover:bg-blue-500/25 transition-colors disabled:opacity-30"
+                      >
+                        Schedule
+                      </button>
+                      <input
+                        type="datetime-local"
+                        value={scheduleFor[post.id] || ''}
+                        onChange={e => setScheduleFor(prev => ({ ...prev, [post.id]: e.target.value }))}
+                        className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-2 text-white/60 text-xs focus:outline-none focus:border-emerald-500/30"
+                      />
+                      <button
+                        onClick={() => handleAction(post.id, { status: 'draft' })}
+                        disabled={actionLoading === post.id}
+                        className="px-3 py-2 rounded-lg bg-white/[0.04] text-white/40 text-sm hover:text-white/60 transition-colors ml-auto"
+                      >
+                        Back to Draft
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Scheduled */}
           {scheduled.length > 0 && (
             <div className="mb-8">
-              <h2 className="text-white/50 text-[10px] uppercase tracking-wider font-medium mb-3">Upcoming</h2>
+              <h2 className="text-white/50 text-[10px] uppercase tracking-wider font-medium mb-3">Scheduled</h2>
               <div className="space-y-2">
                 {scheduled.map(post => (
                   <div key={post.id} className="bg-white/[0.03] rounded-xl p-4 border border-white/[0.06] flex items-start justify-between gap-4">
