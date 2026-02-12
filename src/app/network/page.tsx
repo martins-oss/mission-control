@@ -210,14 +210,6 @@ export default function NetworkPage() {
           <p className="text-white/40 text-sm">Workspace viewer coming soon</p>
           <p className="text-white/25 text-xs mt-2">Requires gateway API endpoint setup</p>
         </div>
-//           <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl p-12 border border-white/[0.08] shadow-lg shadow-black/20 text-center">
-//             <p className="text-white/30 text-sm">No workspace data</p>
-//           </div>
-        ) : (
-          <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl p-12 border border-white/[0.08] shadow-lg shadow-black/20 text-center">
-            <p className="text-white/40 text-sm">Select an agent to view their workspace structure</p>
-          </div>
-        )}
       </div>
       )}
     </AppShell>
