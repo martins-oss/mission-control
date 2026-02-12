@@ -177,7 +177,11 @@ export default function NetworkPage() {
         </div>
       </div>
 
-      {/* Workspace Viewer */}
+      {/* Workspace Viewer — TEMPORARILY DISABLED
+          Issue: Vercel serverless functions can't access VPS filesystem
+          Fix required: Create gateway API endpoint for workspace data
+      */}
+      {false && (
       <div className="mt-12">
         <h2 className="font-display text-2xl font-semibold tracking-tight text-white mb-6">Agent Workspaces</h2>
         
@@ -239,6 +243,7 @@ export default function NetworkPage() {
           </div>
         )}
       </div>
+      )}
     </AppShell>
   )
 }
