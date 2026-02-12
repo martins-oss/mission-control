@@ -7,6 +7,8 @@ import { useLinkedInPosts, useLinkedInAuth } from '@/lib/hooks'
 import { AGENT_MAP } from '@/lib/constants'
 import type { LinkedInPost } from '@/lib/supabase'
 
+export const dynamic = 'force-dynamic'
+
 const LI_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:              { bg: 'bg-yellow-500/15', text: 'text-yellow-400' },
   feedback_requested: { bg: 'bg-orange-500/15', text: 'text-orange-400' },
