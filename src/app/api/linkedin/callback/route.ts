@@ -64,8 +64,8 @@ export async function GET(req: NextRequest) {
     const expiresIn = tokenData.expires_in || 5184000 // Default 60 days
     const refreshToken = tokenData.refresh_token || null
 
-    // Get user profile to get the URN (using /v2/me for w_member_social scope)
-    const profileRes = await fetch('https://api.linkedin.com/v2/me', {
+    // Get user profile to get the URN (using /v2/userinfo with OpenID Connect)
+    const profileRes = await fetch('https://api.linkedin.com/v2/userinfo', {
       headers: { 'Authorization': `Bearer ${accessToken}` },
     })
 
@@ -79,12 +79,12 @@ export async function GET(req: NextRequest) {
 
     const profile = await profileRes.json()
     
-    if (!profile.id) {
-      console.error('No id in profile:', profile)
-      return NextResponse.redirect(new URL('/linkedin?linkedin=error&reason=no_id', req.url))
+    if (!profile.sub) {
+      console.error('No sub in profile:', profile)
+      return NextResponse.redirect(new URL('/linkedin?linkedin=error&reason=no_sub', req.url))
     }
 
-    const userUrn = `urn:li:person:${profile.id}`
+    const userUrn = `urn:li:person:${profile.sub}`
     const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString()
 
     // Delete old tokens first
