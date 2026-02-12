@@ -85,3 +85,42 @@ export interface Improvement {
   created_at: string
   updated_at: string
 }
+
+export interface AgentUsage {
+  id: string
+  agent_id: string
+  date: string
+  model: string
+  input_tokens: number
+  output_tokens: number
+  cache_read_tokens: number
+  cache_write_tokens: number
+  input_cost: number
+  output_cost: number
+  cache_read_cost: number
+  cache_write_cost: number
+  total_cost: number
+  message_count: number
+  created_at: string
+}
+
+export interface CronJob {
+  id: string
+  job_id: string
+  name: string | null
+  schedule: any
+  payload_kind: string
+  session_target: string
+  enabled: boolean
+  last_run: string | null
+  next_run: string | null
+  updated_at: string
+}
+
+export interface AgentWorkspace {
+  id: string
+  agent_id: string
+  file_path: string
+  size_bytes: number
+  updated_at: string
+}

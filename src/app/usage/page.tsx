@@ -1,223 +1,230 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import AppShell from '@/components/AppShell'
-import { HeroStatCard } from '@/components/HeroStatCard'
-import { AGENTS, AGENT_MAP } from '@/lib/constants'
-
-interface UsageData {
-  agents: Record<string, {
-    totalTokens: number
-    totalCost: number
-    sessions: number
-    model: string
-  }>
-  total: { tokens: number; cost: number }
-  weekly: Array<{ week: string; cost: number }>
-  fetchedAt: string
-}
+import { supabase, AgentUsage } from '@/lib/supabase'
+import { AGENT_MAP } from '@/lib/constants'
 
 export default function UsagePage() {
-  const [usage, setUsage] = useState<UsageData | null>(null)
+  const [usage, setUsage] = useState<AgentUsage[]>([])
   const [loading, setLoading] = useState(true)
-  const [snapshotting, setSnapshotting] = useState(false)
+  const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d'>('30d')
+
+  const fetchUsage = useCallback(async () => {
+    setLoading(true)
+    
+    // Calculate date threshold
+    const daysAgo = dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90
+    const threshold = new Date()
+    threshold.setDate(threshold.getDate() - daysAgo)
+    
+    const { data, error } = await supabase
+      .from('agent_usage')
+      .select('*')
+      .gte('date', threshold.toISOString().split('T')[0])
+      .order('date', { ascending: false })
+    
+    if (error) {
+      console.error('Failed to fetch usage:', error)
+    } else {
+      setUsage(data || [])
+    }
+    
+    setLoading(false)
+  }, [dateRange])
 
   useEffect(() => {
     fetchUsage()
-  }, [])
+    const interval = setInterval(fetchUsage, 60000) // Refresh every minute
+    return () => clearInterval(interval)
+  }, [fetchUsage])
 
-  async function fetchUsage() {
-    try {
-      const res = await fetch('/api/usage/snapshot')
-      if (res.ok) {
-        const data = await res.json()
-        setUsage(data)
+  // Aggregate by agent
+  const agentTotals: Record<string, {
+    tokens: number
+    cost: number
+    messages: number
+    lastModel: string
+  }> = {}
+
+  for (const record of usage) {
+    if (!agentTotals[record.agent_id]) {
+      agentTotals[record.agent_id] = {
+        tokens: 0,
+        cost: 0,
+        messages: 0,
+        lastModel: record.model,
       }
-    } catch (err) {
-      console.error('Failed to fetch usage:', err)
     }
-    setLoading(false)
+    agentTotals[record.agent_id].tokens += record.input_tokens + record.output_tokens
+    agentTotals[record.agent_id].cost += record.total_cost
+    agentTotals[record.agent_id].messages += record.message_count
+    agentTotals[record.agent_id].lastModel = record.model
   }
 
-  async function createSnapshot() {
-    setSnapshotting(true)
-    try {
-      const res = await fetch('/api/usage/snapshot', { method: 'POST' })
-      if (res.ok) {
-        await fetchUsage()
-      } else {
-        alert('Failed to create snapshot: ' + (await res.text()))
-      }
-    } catch (err) {
-      alert('Failed to create snapshot')
+  const totalTokens = Object.values(agentTotals).reduce((s, a) => s + a.tokens, 0)
+  const totalCost = Object.values(agentTotals).reduce((s, a) => s + a.cost, 0)
+  const totalMessages = Object.values(agentTotals).reduce((s, a) => s + a.messages, 0)
+
+  // Daily totals for chart
+  const dailyTotals: Record<string, { tokens: number; cost: number }> = {}
+  for (const record of usage) {
+    const date = record.date
+    if (!dailyTotals[date]) {
+      dailyTotals[date] = { tokens: 0, cost: 0 }
     }
-    setSnapshotting(false)
+    dailyTotals[date].tokens += record.input_tokens + record.output_tokens
+    dailyTotals[date].cost += record.total_cost
   }
 
-  const totalCostFormatted = usage?.total.cost.toFixed(2) || '0.00'
-  const totalTokensFormatted = usage ? (usage.total.tokens / 1_000_000).toFixed(2) + 'M' : '0'
+  const sortedDates = Object.keys(dailyTotals).sort()
 
   return (
     <AppShell>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="font-display text-4xl font-bold tracking-tight text-white">Token Usage</h1>
-          <p className="text-white/60 text-lg mt-2">API cost tracking per agent (last 30 days)</p>
+          <h1 className="text-xl font-bold text-white">Token Usage & Costs</h1>
+          <p className="text-white/40 text-sm mt-0.5">Per-agent token consumption and costs</p>
         </div>
-        <button
-          onClick={createSnapshot}
-          disabled={snapshotting}
-          className="px-4 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-sm font-medium transition-colors disabled:opacity-50"
-        >
-          {snapshotting ? 'Updating...' : 'Update Now'}
-        </button>
+        
+        {/* Date Range Selector */}
+        <div className="flex items-center gap-1 bg-white/[0.04] rounded-lg p-0.5">
+          {(['7d', '30d', '90d'] as const).map(range => (
+            <button
+              key={range}
+              onClick={() => setDateRange(range)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                dateRange === range
+                  ? 'bg-white/[0.08] text-white/80'
+                  : 'text-white/30 hover:text-white/50'
+              }`}
+            >
+              {range === '7d' ? '7 Days' : range === '30d' ? '30 Days' : '90 Days'}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {loading ? (
-        <div className="text-white/40 text-sm py-12 text-center">Loading usage data...</div>
-      ) : !usage ? (
-        <div className="text-center py-12">
-          <p className="text-white/30 text-sm mb-4">No usage data yet</p>
-          <button
-            onClick={createSnapshot}
-            disabled={snapshotting}
-            className="px-4 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-sm font-medium transition-colors"
-          >
-            Create First Snapshot
-          </button>
+      {/* Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="bg-white/[0.03] backdrop-blur-sm rounded-xl p-5 border border-white/[0.06]">
+          <p className="text-white/40 text-xs uppercase tracking-wider mb-2">Total Tokens</p>
+          <p className="text-white text-3xl font-bold">{(totalTokens / 1_000_000).toFixed(2)}M</p>
+          <p className="text-white/30 text-xs mt-1">{totalMessages.toLocaleString()} messages</p>
         </div>
-      ) : (
-        <>
-          {/* Summary Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-            <HeroStatCard
-              label="Total Cost"
-              value={`$${totalCostFormatted}`}
-              icon="◆"
-              accentColor="emerald"
-            />
-            <HeroStatCard
-              label="Total Tokens"
-              value={totalTokensFormatted}
-              icon="◈"
-              accentColor="blue"
-            />
-            <HeroStatCard
-              label="Active Agents"
-              value={Object.keys(usage.agents).length}
-              icon="◉"
-              accentColor="emerald"
-            />
-            <HeroStatCard
-              label="Avg Cost/Agent"
-              value={`$${(usage.total.cost / Object.keys(usage.agents).length).toFixed(2)}`}
-              icon="◊"
-              accentColor="gray"
-            />
-          </div>
+        
+        <div className="bg-white/[0.03] backdrop-blur-sm rounded-xl p-5 border border-white/[0.06]">
+          <p className="text-white/40 text-xs uppercase tracking-wider mb-2">Total Cost</p>
+          <p className="text-emerald-400 text-3xl font-bold">${totalCost.toFixed(2)}</p>
+          <p className="text-white/30 text-xs mt-1">Last {dateRange === '7d' ? '7' : dateRange === '30d' ? '30' : '90'} days</p>
+        </div>
+        
+        <div className="bg-white/[0.03] backdrop-blur-sm rounded-xl p-5 border border-white/[0.06]">
+          <p className="text-white/40 text-xs uppercase tracking-wider mb-2">Avg Cost/Day</p>
+          <p className="text-blue-400 text-3xl font-bold">
+            ${(totalCost / (dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90)).toFixed(2)}
+          </p>
+          <p className="text-white/30 text-xs mt-1">Projected: ${(totalCost / (dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90) * 30).toFixed(2)}/mo</p>
+        </div>
+      </div>
 
-          {/* Per-Agent Breakdown */}
-          <div className="mb-12">
-            <h2 className="font-display text-2xl font-semibold tracking-tight text-white mb-6">Per-Agent Usage</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {AGENTS.map(agent => {
-                const agentUsage = usage.agents[agent.id]
-                if (!agentUsage) return null
+      {/* Per-Agent Breakdown */}
+      <div className="mb-8">
+        <h2 className="text-white/50 text-[10px] uppercase tracking-wider font-medium mb-3">Per-Agent Usage</h2>
+        <div className="bg-white/[0.03] rounded-xl border border-white/[0.06] overflow-hidden">
+          {loading ? (
+            <div className="p-8 text-center text-white/50 text-sm">Loading usage data...</div>
+          ) : Object.keys(agentTotals).length === 0 ? (
+            <div className="p-8 text-center text-white/40 text-sm">No usage data yet</div>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-white/[0.02]">
+                <tr className="text-left text-xs text-white/40 uppercase tracking-wider">
+                  <th className="px-4 py-3 font-medium">Agent</th>
+                  <th className="px-4 py-3 font-medium">Model</th>
+                  <th className="px-4 py-3 font-medium text-right">Tokens</th>
+                  <th className="px-4 py-3 font-medium text-right">Messages</th>
+                  <th className="px-4 py-3 font-medium text-right">Cost</th>
+                  <th className="px-4 py-3 font-medium text-right">% of Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.04]">
+                {Object.entries(agentTotals)
+                  .sort((a, b) => b[1].cost - a[1].cost)
+                  .map(([agentId, data]) => {
+                    const agent = AGENT_MAP[agentId]
+                    const pct = (data.cost / totalCost * 100).toFixed(1)
+                    
+                    return (
+                      <tr key={agentId} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            {agent?.avatar ? (
+                              <img src={agent.avatar} alt={agent.name} className="w-6 h-6 rounded-full" />
+                            ) : (
+                              <span className="text-lg">{agent?.emoji || '🤖'}</span>
+                            )}
+                            <span className="text-white/80 font-medium text-sm">{agent?.name || agentId}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-white/50 text-xs font-mono">{data.lastModel}</span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="text-white/70 text-sm">{(data.tokens / 1_000_000).toFixed(2)}M</span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="text-white/70 text-sm">{data.messages.toLocaleString()}</span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="text-emerald-400 text-sm font-semibold">${data.cost.toFixed(2)}</span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="text-white/50 text-sm">{pct}%</span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
 
-                const costFormatted = agentUsage.totalCost.toFixed(2)
-                const tokensFormatted = (agentUsage.totalTokens / 1_000_000).toFixed(2)
-                const costPercent = ((agentUsage.totalCost / usage.total.cost) * 100).toFixed(0)
-
+      {/* Daily Trend */}
+      <div>
+        <h2 className="text-white/50 text-[10px] uppercase tracking-wider font-medium mb-3">Daily Trend</h2>
+        <div className="bg-white/[0.03] rounded-xl border border-white/[0.06] p-6">
+          {sortedDates.length === 0 ? (
+            <p className="text-center text-white/40 text-sm">No data</p>
+          ) : (
+            <div className="space-y-2">
+              {sortedDates.slice(-14).map(date => {
+                const data = dailyTotals[date]
+                const maxCost = Math.max(...Object.values(dailyTotals).map(d => d.cost))
+                const barWidth = maxCost > 0 ? (data.cost / maxCost * 100) : 0
+                
                 return (
-                  <div
-                    key={agent.id}
-                    className="
-                      bg-white/[0.03] backdrop-blur-sm
-                      rounded-2xl p-6 
-                      border border-white/[0.08]
-                      hover:border-emerald-500/30 hover:bg-white/[0.05]
-                      transition-all duration-500
-                      shadow-lg shadow-black/20
-                    "
-                  >
-                    <div className="flex items-start gap-4 mb-4">
-                      <img
-                        src={agent.avatar}
-                        alt={agent.name}
-                        className="w-12 h-12 rounded-full ring-2 ring-white/10"
+                  <div key={date} className="flex items-center gap-3">
+                    <span className="text-white/40 text-xs font-mono w-24">{date}</span>
+                    <div className="flex-1 bg-white/[0.03] rounded-full h-6 relative overflow-hidden">
+                      <div
+                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-500/30 to-emerald-500/10 rounded-full"
+                        style={{ width: `${barWidth}%` }}
                       />
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-display text-base font-semibold text-white mb-1">
-                          {agent.name}
-                        </h3>
-                        <p className="text-white/40 text-xs">{agent.role}</p>
-                        <p className="text-white/25 text-xs font-mono mt-1">{agentUsage.model}</p>
-                      </div>
+                      <span className="absolute inset-0 flex items-center px-3 text-xs text-white/60">
+                        {(data.tokens / 1_000_000).toFixed(2)}M tokens
+                      </span>
                     </div>
-
-                    <div className="space-y-3">
-                      <div>
-                        <div className="flex items-baseline justify-between mb-1">
-                          <span className="text-white/40 text-xs">Cost</span>
-                          <span className="text-emerald-400 text-2xl font-bold">${costFormatted}</span>
-                        </div>
-                        <div className="w-full h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-emerald-500/50"
-                            style={{ width: `${costPercent}%` }}
-                          />
-                        </div>
-                        <p className="text-white/25 text-xs mt-1">{costPercent}% of total</p>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="text-white/40 text-xs">Tokens</span>
-                        <span className="text-white/70 text-sm font-medium">{tokensFormatted}M</span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="text-white/40 text-xs">Sessions</span>
-                        <span className="text-white/70 text-sm font-medium">{agentUsage.sessions}</span>
-                      </div>
-                    </div>
+                    <span className="text-emerald-400 text-xs font-semibold w-16 text-right">
+                      ${data.cost.toFixed(2)}
+                    </span>
                   </div>
                 )
               })}
             </div>
-          </div>
-
-          {/* Weekly Trend */}
-          {usage.weekly && usage.weekly.length > 0 && (
-            <div>
-              <h2 className="font-display text-2xl font-semibold tracking-tight text-white mb-6">Weekly Trend</h2>
-              <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl p-6 border border-white/[0.08] shadow-lg shadow-black/20">
-                <div className="space-y-4">
-                  {usage.weekly.map((week, i) => (
-                    <div key={i}>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-white/60 text-sm">{week.week}</span>
-                        <span className="text-white/90 font-medium">${week.cost.toFixed(2)}</span>
-                      </div>
-                      <div className="w-full h-2 bg-white/[0.06] rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-emerald-500/50 to-emerald-400/50"
-                          style={{ width: `${(week.cost / Math.max(...usage.weekly.map(w => w.cost))) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
           )}
-
-          {/* Last Updated */}
-          {usage.fetchedAt && (
-            <p className="text-white/25 text-xs mt-8 text-center">
-              Last updated: {new Date(usage.fetchedAt).toLocaleString()}
-            </p>
-          )}
-        </>
-      )}
+        </div>
+      </div>
     </AppShell>
   )
 }

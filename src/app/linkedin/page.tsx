@@ -1,5 +1,6 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import AppShell from '@/components/AppShell'
 import LinkedInCalendar from '@/components/LinkedInCalendar'
 import { useLinkedInPosts, useLinkedInAuth } from '@/lib/hooks'
@@ -27,6 +28,7 @@ function PostStatusBadge({ status }: { status: string }) {
 type View = 'queue' | 'calendar'
 
 export default function LinkedInPage() {
+  const searchParams = useSearchParams()
   const { posts, loading, refresh } = useLinkedInPosts()
   const { auth, loading: authLoading } = useLinkedInAuth()
   const [view, setView] = useState<View>('queue')
@@ -37,10 +39,28 @@ export default function LinkedInPage() {
   const [feedbackText, setFeedbackText] = useState('')
   const [scheduleFor, setScheduleFor] = useState<Record<string, string>>({})
   const [uploadingId, setUploadingId] = useState<string | null>(null)
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadPostIdRef = useRef<string | null>(null)
 
   const isConnected = auth && new Date(auth.expires_at) > new Date()
+
+  // Handle OAuth callback notifications
+  useEffect(() => {
+    const linkedinStatus = searchParams.get('linkedin')
+    if (linkedinStatus === 'connected') {
+      setNotification({ type: 'success', message: 'LinkedIn connected successfully!' })
+      setTimeout(() => setNotification(null), 5000)
+    } else if (linkedinStatus === 'error') {
+      const reason = searchParams.get('reason') || 'unknown'
+      const details = searchParams.get('details') || ''
+      setNotification({ 
+        type: 'error', 
+        message: `LinkedIn connection failed: ${reason}${details ? ` (${details})` : ''}` 
+      })
+      setTimeout(() => setNotification(null), 10000)
+    }
+  }, [searchParams])
 
   const handleAction = async (postId: string, updates: Record<string, any>) => {
     setActionLoading(postId)
@@ -131,6 +151,17 @@ export default function LinkedInPage() {
 
   return (
     <AppShell>
+      {/* Notification Banner */}
+      {notification && (
+        <div className={`mb-6 p-4 rounded-lg border ${
+          notification.type === 'success'
+            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+            : 'bg-red-500/10 border-red-500/30 text-red-400'
+        }`}>
+          <p className="text-sm">{notification.message}</p>
+        </div>
+      )}
+
       {/* Hidden file input */}
       <input
         ref={fileInputRef}

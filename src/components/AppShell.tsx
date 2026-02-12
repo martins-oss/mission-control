@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: '/cron', label: 'Cron', icon: '⏰' },
   { href: '/improvements', label: 'Improvements', icon: '◆' },
   { href: '/network', label: 'Network', icon: '⬡' },
+  { href: '/setup', label: 'Setup', icon: '⚙' },
   { href: '/linkedin', label: 'LinkedIn', icon: '◈' },
 ]
 
