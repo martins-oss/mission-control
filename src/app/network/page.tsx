@@ -210,7 +210,7 @@ export default function NetworkPage() {
           <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl p-12 border border-white/[0.08] shadow-lg shadow-black/20 text-center">
             <p className="text-white/40 text-sm">Loading workspace...</p>
           </div>
-        ) : workspaceData ? (
+        ) : workspaceData && workspaceData.agentId && workspaceData.tree ? (
           <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl p-6 border border-white/[0.08] shadow-lg shadow-black/20">
             <div className="flex items-start justify-between mb-4">
               <div>
