@@ -67,16 +67,29 @@ export default function LinkedInPage() {
   const handleAction = async (postId: string, updates: Record<string, any>) => {
     setActionLoading(postId)
     try {
-      await fetch('/api/linkedin/posts', {
+      const response = await fetch('/api/linkedin/posts', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: postId, ...updates }),
       })
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        console.error('Action failed:', response.status, errorData)
+        alert(`Failed to update post: ${errorData.error || response.statusText}`)
+        setActionLoading(null)
+        return false
+      }
+      
       refresh()
+      setActionLoading(null)
+      return true
     } catch (err) {
       console.error('Action failed:', err)
+      alert(`Network error: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      setActionLoading(null)
+      return false
     }
-    setActionLoading(null)
   }
 
   const handlePublishNow = async (postId: string) => {
@@ -102,9 +115,12 @@ export default function LinkedInPage() {
   }
 
   const saveEdit = async (postId: string) => {
-    await handleAction(postId, { content: editContent })
-    setEditingId(null)
-    setEditContent('')
+    const success = await handleAction(postId, { content: editContent })
+    if (success) {
+      setEditingId(null)
+      setEditContent('')
+    }
+    // If failed, keep editing state so user doesn't lose their changes
   }
 
   const submitFeedback = async (postId: string) => {
