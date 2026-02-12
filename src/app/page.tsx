@@ -2,6 +2,8 @@
 import { useMemo } from 'react'
 import Link from 'next/link'
 import AppShell from '@/components/AppShell'
+import { StatusBadge } from '@/components/StatusBadge'
+import { HeroStatCard } from '@/components/HeroStatCard'
 import { useAgentStatus, deriveStatus, useTasks, useBlockers, useImprovements } from '@/lib/hooks'
 import { AGENTS, AGENT_MAP, STATUS_COLORS, formatModel } from '@/lib/constants'
 import type { Task, AgentStatus } from '@/lib/supabase'
@@ -16,16 +18,6 @@ function timeAgo(date: string | null): string {
   const hrs = Math.floor(mins / 60)
   if (hrs < 24) return `${hrs}h ago`
   return `${Math.floor(hrs / 24)}d ago`
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const colors = STATUS_COLORS[status] || STATUS_COLORS.offline
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}>
-      <span className={`w-2 h-2 rounded-full ${colors.dot} ${status === 'active' ? 'animate-pulse' : ''}`} />
-      {status}
-    </span>
-  )
 }
 
 export default function Dashboard() {
@@ -71,54 +63,58 @@ export default function Dashboard() {
   return (
     <AppShell>
       {/* Hero Section */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">Mission Control</h1>
-        <p className="text-white/50 text-lg">
+      <div className="mb-10">
+        <h1 className="font-display text-4xl font-bold tracking-tight text-white mb-3">
+          Mission Control
+        </h1>
+        <p className="text-white/60 text-lg">
           {activeAgents} active agent{activeAgents !== 1 ? 's' : ''} · {stats.active} task{stats.active !== 1 ? 's' : ''} in progress
           {stats.blocked > 0 && <span className="text-red-400/70 ml-2">· {stats.blocked} blocked</span>}
         </p>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-        <Link href="#agents" className="group">
-          <div className="bg-white/[0.06] backdrop-blur-xl rounded-2xl p-6 border border-white/[0.1] hover:border-emerald-500/30 transition-all">
-            <p className="text-white/40 text-xs uppercase tracking-wider font-medium mb-2">Active Agents</p>
-            <p className="text-4xl font-bold text-emerald-400 group-hover:scale-105 transition-transform">{activeAgents}</p>
-          </div>
-        </Link>
-        <Link href="#tasks" className="group">
-          <div className="bg-white/[0.06] backdrop-blur-xl rounded-2xl p-6 border border-white/[0.1] hover:border-emerald-500/30 transition-all">
-            <p className="text-white/40 text-xs uppercase tracking-wider font-medium mb-2">In Progress</p>
-            <p className="text-4xl font-bold text-white group-hover:scale-105 transition-transform">{tasksLoading ? '—' : stats.active}</p>
-          </div>
-        </Link>
-        <Link href="#tasks" className="group">
-          <div className="bg-white/[0.06] backdrop-blur-xl rounded-2xl p-6 border border-white/[0.1] hover:border-red-500/30 transition-all">
-            <p className="text-white/40 text-xs uppercase tracking-wider font-medium mb-2">Blocked</p>
-            <p className={`text-4xl font-bold group-hover:scale-105 transition-transform ${stats.blocked > 0 ? 'text-red-400' : 'text-white/30'}`}>
-              {tasksLoading ? '—' : stats.blocked}
-            </p>
-          </div>
-        </Link>
-        <Link href="#tasks" className="group">
-          <div className="bg-white/[0.06] backdrop-blur-xl rounded-2xl p-6 border border-white/[0.1] hover:border-emerald-500/30 transition-all">
-            <p className="text-white/40 text-xs uppercase tracking-wider font-medium mb-2">Backlog</p>
-            <p className="text-4xl font-bold text-white/50 group-hover:scale-105 transition-transform">{tasksLoading ? '—' : stats.backlog}</p>
-          </div>
-        </Link>
+      {/* Quick Stats - Hero Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        <HeroStatCard 
+          label="Active Agents"
+          value={activeAgents}
+          icon="◉"
+          accentColor="emerald"
+          href="#agents"
+        />
+        <HeroStatCard 
+          label="In Progress"
+          value={tasksLoading ? '—' : stats.active}
+          icon="⚡"
+          accentColor="blue"
+          href="#tasks"
+        />
+        <HeroStatCard 
+          label="Blocked"
+          value={tasksLoading ? '—' : stats.blocked}
+          icon="⚠"
+          accentColor={stats.blocked > 0 ? 'red' : 'gray'}
+          href="#tasks"
+        />
+        <HeroStatCard 
+          label="Backlog"
+          value={tasksLoading ? '—' : stats.backlog}
+          icon="◷"
+          accentColor="gray"
+          href="#tasks"
+        />
       </div>
 
       {/* Agent Status Grid */}
-      <div id="agents" className="mb-10">
+      <div id="agents" className="mb-12">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-white text-2xl font-semibold">Agents</h2>
+          <h2 className="font-display text-2xl font-semibold tracking-tight text-white">Agents</h2>
           <Link href="/network" className="text-emerald-400/70 hover:text-emerald-400 text-sm font-medium transition-colors">
             View network →
           </Link>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {AGENTS.map(agent => {
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {AGENTS.map((agent, index) => {
             const agentStatus = statusMap[agent.id]
             const derivedStatus = agentStatus ? deriveStatus(agentStatus) : 'idle'
             const currentTask = agentStatus?.current_task || tasks.find(t => t.owner === agent.id && t.status === 'in_progress')?.task || null
@@ -126,42 +122,84 @@ export default function Dashboard() {
             const model = agentStatus?.model || null
 
             return (
-              <div key={agent.id} className="bg-white/[0.06] backdrop-blur-xl rounded-2xl p-6 border border-white/[0.1] hover:border-emerald-500/20 transition-all group">
-                <div className="flex items-start gap-4 mb-4">
+              <div 
+                key={agent.id}
+                style={{ 
+                  animation: `fadeInUp 0.6s ease-out ${index * 0.1}s both` 
+                }}
+                className="
+                  group relative
+                  bg-white/[0.03] backdrop-blur-sm
+                  rounded-2xl p-6 
+                  border border-white/[0.08]
+                  hover:border-emerald-500/30 hover:bg-white/[0.05]
+                  transition-all duration-500
+                  shadow-lg shadow-black/20
+                "
+              >
+                {/* Status glow overlay */}
+                {derivedStatus === 'active' && (
+                  <div className="absolute inset-0 rounded-2xl bg-emerald-500/5 ring-1 ring-emerald-500/20 pointer-events-none" />
+                )}
+                
+                <div className="relative flex items-start gap-4 mb-4">
                   <div className="relative">
                     <img
                       src={agent.avatar}
                       alt={agent.name}
-                      className="w-14 h-14 rounded-full ring-2 ring-white/10 group-hover:ring-emerald-500/30 transition-all"
+                      className={`
+                        w-14 h-14 rounded-full 
+                        ring-2 transition-all duration-300
+                        ${derivedStatus === 'active' 
+                          ? 'ring-emerald-500/50 shadow-lg shadow-emerald-500/20' 
+                          : 'ring-white/10'}
+                      `}
                     />
-                    <span className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-[#0A0A0A] ${
-                      derivedStatus === 'active' ? 'bg-emerald-500 animate-pulse' :
-                      derivedStatus === 'idle' ? 'bg-yellow-500' :
-                      'bg-gray-500'
-                    }`} />
+                    {/* Online indicator dot */}
+                    {derivedStatus === 'active' && (
+                      <span className="
+                        absolute bottom-0 right-0 
+                        w-4 h-4 bg-emerald-400 rounded-full 
+                        ring-2 ring-[#0A0A0A]
+                        animate-pulse
+                      " />
+                    )}
                   </div>
+                  
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-white font-semibold text-base">{agent.name}</h3>
+                      <h3 className="font-display text-base font-semibold text-white">
+                        {agent.name}
+                      </h3>
                       <StatusBadge status={derivedStatus} />
                     </div>
-                    <p className="text-white/40 text-sm">{agent.role}</p>
+                    <p className="text-white/50 text-sm">{agent.role}</p>
                     {model && (
-                      <p className="text-white/30 text-xs mt-1 font-mono">{formatModel(model)}</p>
+                      <p className="text-white/30 text-xs mt-1 font-mono tracking-tight">
+                        {formatModel(model)}
+                      </p>
                     )}
                   </div>
                 </div>
 
-                <div className="min-h-[60px]">
+                {/* Current task with better styling */}
+                <div className="min-h-[60px] mb-3">
                   {currentTask ? (
-                    <p className="text-emerald-400/80 text-sm leading-relaxed">{currentTask}</p>
+                    <div className="
+                      p-3 rounded-lg 
+                      bg-emerald-500/5 border border-emerald-500/10
+                    ">
+                      <p className="text-emerald-400/90 text-sm leading-relaxed">
+                        {currentTask}
+                      </p>
+                    </div>
                   ) : (
                     <p className="text-white/20 text-sm italic">No active task</p>
                   )}
                 </div>
 
                 {lastSeen && (
-                  <p className="text-white/25 text-xs mt-4 pt-4 border-t border-white/[0.06]">
+                  <p className="text-white/30 text-xs pt-3 border-t border-white/[0.06]">
                     Last seen {lastSeen}
                   </p>
                 )}
@@ -173,9 +211,9 @@ export default function Dashboard() {
 
       {/* Improvements Section */}
       {pendingImprovements.length > 0 && (
-        <div className="mb-10">
+        <div className="mb-12">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-white text-2xl font-semibold">
+            <h2 className="font-display text-2xl font-semibold tracking-tight text-white">
               Pending Improvements
               <span className="ml-3 px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 text-sm font-bold">
                 {pendingImprovements.length}
@@ -184,7 +222,17 @@ export default function Dashboard() {
           </div>
           <div className="grid grid-cols-1 gap-4">
             {pendingImprovements.slice(0, 5).map(improvement => (
-              <div key={improvement.id} className="bg-white/[0.06] backdrop-blur-xl rounded-2xl p-6 border border-white/[0.1] hover:border-emerald-500/20 transition-all">
+              <div 
+                key={improvement.id} 
+                className="
+                  bg-white/[0.03] backdrop-blur-sm 
+                  rounded-2xl p-6 
+                  border border-white/[0.08]
+                  hover:border-emerald-500/20 
+                  transition-all duration-300
+                  shadow-lg shadow-black/20
+                "
+              >
                 <div className="flex items-start justify-between gap-6">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-3">
@@ -237,18 +285,18 @@ export default function Dashboard() {
         {/* Tasks (2/3 width) */}
         <div className="lg:col-span-2">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-white text-2xl font-semibold">Tasks</h2>
+            <h2 className="font-display text-2xl font-semibold tracking-tight text-white">Tasks</h2>
           </div>
           {tasksLoading ? (
-            <div className="bg-white/[0.06] backdrop-blur-xl rounded-2xl p-12 border border-white/[0.1] text-center text-white/40">
+            <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl p-12 border border-white/[0.08] text-center text-white/40 shadow-lg shadow-black/20">
               Loading tasks...
             </div>
           ) : tasks.length === 0 ? (
-            <div className="bg-white/[0.06] backdrop-blur-xl rounded-2xl p-12 border border-white/[0.1] text-center text-white/40">
+            <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl p-12 border border-white/[0.08] text-center text-white/40 shadow-lg shadow-black/20">
               No tasks
             </div>
           ) : (
-            <div className="bg-white/[0.06] backdrop-blur-xl rounded-2xl border border-white/[0.1] overflow-hidden">
+            <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl border border-white/[0.08] overflow-hidden shadow-lg shadow-black/20">
               <div className="divide-y divide-white/[0.06]">
                 {tasks.slice(0, 12).map(task => {
                   const ownerMeta = AGENT_MAP[task.owner]
@@ -297,7 +345,7 @@ export default function Dashboard() {
 
         {/* Sidebar: Blockers (1/3 width) */}
         <div>
-          <h2 className="text-white text-2xl font-semibold mb-6">
+          <h2 className="font-display text-2xl font-semibold tracking-tight text-white mb-6">
             Blockers
             {blockers.length > 0 && (
               <span className="ml-2 px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 text-xs font-bold">
@@ -305,7 +353,7 @@ export default function Dashboard() {
               </span>
             )}
           </h2>
-          <div className="bg-white/[0.06] backdrop-blur-xl rounded-2xl border border-white/[0.1] overflow-hidden">
+          <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl border border-white/[0.08] overflow-hidden shadow-lg shadow-black/20">
             {blockersLoading ? (
               <div className="p-8 text-center text-white/40 text-sm">Loading...</div>
             ) : blockers.length === 0 ? (

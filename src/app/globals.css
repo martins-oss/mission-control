@@ -2,23 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  background: #0A0A0A;
-  color: white;
-  -webkit-font-smoothing: antialiased;
+@layer base {
+  body {
+    @apply bg-[#0A0A0A] text-white antialiased;
+  }
 }
 
-/* Scrollbar */
+/* Smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar for dark theme */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
+  height: 8px;
 }
+
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.02);
 }
+
 ::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.1);
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* React Flow edge animation */
+.react-flow__edge-path {
+  stroke-dasharray: 5;
+  animation: dashdraw 0.5s linear infinite;
+}
+
+@keyframes dashdraw {
+  from { stroke-dashoffset: 10; }
+  to { stroke-dashoffset: 0; }
 }
