@@ -68,3 +68,20 @@ export interface AgentStatus {
   tools: any | null
   updated_at: string
 }
+
+export interface Improvement {
+  id: string
+  proposal_id: string | null
+  title: string
+  description: string | null
+  impact: 'low' | 'medium' | 'high'
+  risk: 'low' | 'medium' | 'high'
+  owner: string | null
+  status: 'proposed' | 'needs_approval' | 'approved' | 'rejected' | 'implemented'
+  outcome: string | null
+  approved_by: string | null
+  approved_at: string | null
+  implemented_at: string | null
+  created_at: string
+  updated_at: string
+}
