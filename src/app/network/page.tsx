@@ -215,18 +215,18 @@ export default function NetworkPage() {
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h3 className="text-white font-semibold mb-1">
-                  {AGENTS.find(a => a.id === workspaceData.agentId)?.name} Workspace
+                  {AGENTS.find(a => a.id === workspaceData!.agentId)?.name} Workspace
                 </h3>
-                <p className="text-white/40 text-xs font-mono">{workspaceData.agentId}</p>
+                <p className="text-white/40 text-xs font-mono">{workspaceData!.agentId}</p>
               </div>
               <div className="text-right">
-                <p className="text-emerald-400 text-sm font-semibold">{workspaceData.totalSizeFormatted}</p>
+                <p className="text-emerald-400 text-sm font-semibold">{workspaceData!.totalSizeFormatted}</p>
                 <p className="text-white/40 text-xs">Total Size</p>
               </div>
             </div>
 
             <div className="bg-black/20 rounded-lg p-4 max-h-[500px] overflow-y-auto">
-              <FileTree nodes={workspaceData.tree} />
+              <FileTree nodes={workspaceData!.tree} />
             </div>
 
             <p className="text-white/25 text-xs mt-4">
