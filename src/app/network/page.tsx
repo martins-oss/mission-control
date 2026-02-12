@@ -1,8 +1,24 @@
 'use client'
+import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import AppShell from '@/components/AppShell'
 import { AGENTS } from '@/lib/constants'
 import { AGENT_CAPABILITIES, SERVICES } from '@/lib/network-data'
+
+interface FileNode {
+  name: string
+  type: 'file' | 'dir'
+  size?: number
+  children?: FileNode[]
+  path: string
+}
+
+interface WorkspaceData {
+  agentId: string
+  tree: FileNode[]
+  totalSize: number
+  totalSizeFormatted: string
+}
 
 // Dynamic import to avoid SSR issues with ReactFlow
 const NetworkGraph = dynamic(() => import('@/components/NetworkGraph'), {
@@ -14,7 +30,61 @@ const NetworkGraph = dynamic(() => import('@/components/NetworkGraph'), {
   ),
 })
 
+function FileTree({ nodes, depth = 0 }: { nodes: FileNode[]; depth?: number }) {
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 B'
+    const k = 1024
+    const sizes = ['B', 'KB', 'MB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return Math.round((bytes / Math.pow(k, i)) * 10) / 10 + ' ' + sizes[i]
+  }
+
+  return (
+    <div className="space-y-0.5" style={{ paddingLeft: depth * 16 }}>
+      {nodes.map((node, i) => (
+        <div key={i}>
+          <div className="flex items-center gap-2 py-0.5">
+            <span className="text-white/40 text-xs">
+              {node.type === 'dir' ? '📁' : '📄'}
+            </span>
+            <span className={`text-xs ${node.type === 'dir' ? 'text-white/70 font-medium' : 'text-white/50'}`}>
+              {node.name}
+            </span>
+            {node.type === 'file' && node.size !== undefined && (
+              <span className="text-white/25 text-[10px] ml-auto">{formatBytes(node.size)}</span>
+            )}
+          </div>
+          {node.children && node.children.length > 0 && (
+            <FileTree nodes={node.children} depth={depth + 1} />
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function NetworkPage() {
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
+  const [workspaceData, setWorkspaceData] = useState<WorkspaceData | null>(null)
+  const [workspaceLoading, setWorkspaceLoading] = useState(false)
+
+  async function loadWorkspace(agentId: string) {
+    setSelectedAgent(agentId)
+    setWorkspaceLoading(true)
+    try {
+      const res = await fetch(`/api/agents/${agentId}/workspace`)
+      if (res.ok) {
+        const data = await res.json()
+        setWorkspaceData(data)
+      } else {
+        console.error('Failed to load workspace:', await res.text())
+      }
+    } catch (err) {
+      console.error('Workspace fetch failed:', err)
+    }
+    setWorkspaceLoading(false)
+  }
+
   return (
     <AppShell>
       <div className="flex items-center justify-between mb-8">
@@ -105,6 +175,69 @@ export default function NetworkPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Workspace Viewer */}
+      <div className="mt-12">
+        <h2 className="font-display text-2xl font-semibold tracking-tight text-white mb-6">Agent Workspaces</h2>
+        
+        {/* Agent Selector */}
+        <div className="flex items-center gap-3 mb-6 flex-wrap">
+          {AGENTS.map(agent => (
+            <button
+              key={agent.id}
+              onClick={() => loadWorkspace(agent.id)}
+              className={`
+                flex items-center gap-2 px-4 py-2 rounded-lg
+                transition-all duration-300
+                ${selectedAgent === agent.id
+                  ? 'bg-emerald-500/20 ring-1 ring-emerald-500/30 text-emerald-400'
+                  : 'bg-white/[0.03] hover:bg-white/[0.05] text-white/60'}
+              `}
+            >
+              <img src={agent.avatar} alt={agent.name} className="w-5 h-5 rounded-full" />
+              <span className="text-sm font-medium">{agent.name}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Workspace Display */}
+        {workspaceLoading ? (
+          <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl p-12 border border-white/[0.08] shadow-lg shadow-black/20 text-center">
+            <p className="text-white/40 text-sm">Loading workspace...</p>
+          </div>
+        ) : workspaceData ? (
+          <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl p-6 border border-white/[0.08] shadow-lg shadow-black/20">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="text-white font-semibold mb-1">
+                  {AGENTS.find(a => a.id === workspaceData.agentId)?.name} Workspace
+                </h3>
+                <p className="text-white/40 text-xs font-mono">{workspaceData.agentId}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-emerald-400 text-sm font-semibold">{workspaceData.totalSizeFormatted}</p>
+                <p className="text-white/40 text-xs">Total Size</p>
+              </div>
+            </div>
+
+            <div className="bg-black/20 rounded-lg p-4 max-h-[500px] overflow-y-auto">
+              <FileTree nodes={workspaceData.tree} />
+            </div>
+
+            <p className="text-white/25 text-xs mt-4">
+              ⚠️ Showing up to 3 levels deep. Hidden files and node_modules excluded.
+            </p>
+          </div>
+        ) : selectedAgent ? (
+          <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl p-12 border border-white/[0.08] shadow-lg shadow-black/20 text-center">
+            <p className="text-white/30 text-sm">No workspace data</p>
+          </div>
+        ) : (
+          <div className="bg-white/[0.03] backdrop-blur-sm rounded-2xl p-12 border border-white/[0.08] shadow-lg shadow-black/20 text-center">
+            <p className="text-white/40 text-sm">Select an agent to view their workspace structure</p>
+          </div>
+        )}
       </div>
     </AppShell>
   )
