@@ -1,8 +1,19 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
+import dynamic from 'next/dynamic'
 import AppShell from '@/components/AppShell'
+import { HeroStatCard } from '@/components/HeroStatCard'
 import { supabase, AgentUsage } from '@/lib/supabase'
-import { AGENT_MAP } from '@/lib/constants'
+import { AGENT_MAP, AGENT_COLORS } from '@/lib/constants'
+
+// Dynamically import Recharts (client-only)
+const AreaChart = dynamic(() => import('recharts').then(m => m.AreaChart), { ssr: false })
+const Area = dynamic(() => import('recharts').then(m => m.Area), { ssr: false })
+const XAxis = dynamic(() => import('recharts').then(m => m.XAxis), { ssr: false })
+const YAxis = dynamic(() => import('recharts').then(m => m.YAxis), { ssr: false })
+const CartesianGrid = dynamic(() => import('recharts').then(m => m.CartesianGrid), { ssr: false })
+const Tooltip = dynamic(() => import('recharts').then(m => m.Tooltip), { ssr: false })
+const ResponsiveContainer = dynamic(() => import('recharts').then(m => m.ResponsiveContainer), { ssr: false })
 
 export default function UsagePage() {
   const [usage, setUsage] = useState<AgentUsage[]>([])
@@ -11,218 +22,307 @@ export default function UsagePage() {
 
   const fetchUsage = useCallback(async () => {
     setLoading(true)
-    
-    // Calculate date threshold
     const daysAgo = dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90
     const threshold = new Date()
     threshold.setDate(threshold.getDate() - daysAgo)
-    
+
     const { data, error } = await supabase
       .from('agent_usage')
       .select('*')
       .gte('date', threshold.toISOString().split('T')[0])
       .order('date', { ascending: false })
-    
-    if (error) {
-      console.error('Failed to fetch usage:', error)
-    } else {
-      setUsage(data || [])
-    }
-    
+
+    if (!error && data) setUsage(data)
     setLoading(false)
   }, [dateRange])
 
   useEffect(() => {
     fetchUsage()
-    const interval = setInterval(fetchUsage, 60000) // Refresh every minute
+    const interval = setInterval(fetchUsage, 60000)
     return () => clearInterval(interval)
   }, [fetchUsage])
 
   // Aggregate by agent
-  const agentTotals: Record<string, {
-    tokens: number
-    cost: number
-    messages: number
-    lastModel: string
-  }> = {}
-
-  for (const record of usage) {
-    if (!agentTotals[record.agent_id]) {
-      agentTotals[record.agent_id] = {
-        tokens: 0,
-        cost: 0,
-        messages: 0,
-        lastModel: record.model,
-      }
+  const agentTotals = useMemo(() => {
+    const totals: Record<string, { tokens: number; cost: number; messages: number; model: string }> = {}
+    for (const r of usage) {
+      if (!totals[r.agent_id]) totals[r.agent_id] = { tokens: 0, cost: 0, messages: 0, model: r.model }
+      totals[r.agent_id].tokens += r.input_tokens + r.output_tokens
+      totals[r.agent_id].cost += r.total_cost
+      totals[r.agent_id].messages += r.message_count
+      totals[r.agent_id].model = r.model
     }
-    agentTotals[record.agent_id].tokens += record.input_tokens + record.output_tokens
-    agentTotals[record.agent_id].cost += record.total_cost
-    agentTotals[record.agent_id].messages += record.message_count
-    agentTotals[record.agent_id].lastModel = record.model
-  }
+    return totals
+  }, [usage])
 
   const totalTokens = Object.values(agentTotals).reduce((s, a) => s + a.tokens, 0)
   const totalCost = Object.values(agentTotals).reduce((s, a) => s + a.cost, 0)
   const totalMessages = Object.values(agentTotals).reduce((s, a) => s + a.messages, 0)
+  const daysCount = dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90
+  const avgPerDay = daysCount > 0 ? totalCost / daysCount : 0
 
-  // Daily totals for chart
-  const dailyTotals: Record<string, { tokens: number; cost: number }> = {}
-  for (const record of usage) {
-    const date = record.date
-    if (!dailyTotals[date]) {
-      dailyTotals[date] = { tokens: 0, cost: 0 }
+  // Chart data: daily cost per agent (stacked)
+  const chartData = useMemo(() => {
+    const dailyMap: Record<string, Record<string, number>> = {}
+    for (const r of usage) {
+      if (!dailyMap[r.date]) dailyMap[r.date] = {}
+      dailyMap[r.date][r.agent_id] = (dailyMap[r.date][r.agent_id] || 0) + r.total_cost
     }
-    dailyTotals[date].tokens += record.input_tokens + record.output_tokens
-    dailyTotals[date].cost += record.total_cost
-  }
+    return Object.entries(dailyMap)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, agents]) => ({
+        date: date.slice(5), // MM-DD
+        ...agents,
+      }))
+  }, [usage])
 
-  const sortedDates = Object.keys(dailyTotals).sort()
+  const agentIds = useMemo(() =>
+    Object.entries(agentTotals)
+      .sort((a, b) => b[1].cost - a[1].cost)
+      .map(([id]) => id),
+    [agentTotals]
+  )
+
+  // Leaderboard sorted by cost
+  const leaderboard = useMemo(() =>
+    Object.entries(agentTotals)
+      .sort((a, b) => b[1].cost - a[1].cost),
+    [agentTotals]
+  )
 
   return (
     <AppShell>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-white">Token Usage & Costs</h1>
-          <p className="text-white/40 text-sm mt-0.5">Per-agent token consumption and costs</p>
+      <div className="space-y-6">
+        {/* Header + Range */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="font-arcade text-sm text-neon-green text-glow-green mb-2">
+              📊 HIGH SCORES
+            </h1>
+            <p className="text-white/30 text-xs font-mono">
+              TOKEN USAGE & COST LEADERBOARD
+            </p>
+          </div>
+          <div className="flex items-center gap-1">
+            {(['7d', '30d', '90d'] as const).map(range => (
+              <button
+                key={range}
+                onClick={() => setDateRange(range)}
+                className={`
+                  px-3 py-1.5 rounded text-[10px] font-mono transition-all
+                  ${dateRange === range
+                    ? 'bg-neon-green/10 text-neon-green border border-neon-green/20'
+                    : 'text-white/30 hover:text-white/50 border border-transparent'
+                  }
+                `}
+              >
+                {range.toUpperCase()}
+              </button>
+            ))}
+          </div>
         </div>
-        
-        {/* Date Range Selector */}
-        <div className="flex items-center gap-1 bg-white/[0.04] rounded-lg p-0.5">
-          {(['7d', '30d', '90d'] as const).map(range => (
-            <button
-              key={range}
-              onClick={() => setDateRange(range)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                dateRange === range
-                  ? 'bg-white/[0.08] text-white/80'
-                  : 'text-white/30 hover:text-white/50'
-              }`}
-            >
-              {range === '7d' ? '7 Days' : range === '30d' ? '30 Days' : '90 Days'}
-            </button>
-          ))}
-        </div>
-      </div>
 
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="bg-white/[0.03] backdrop-blur-sm rounded-xl p-5 border border-white/[0.06]">
-          <p className="text-white/40 text-xs uppercase tracking-wider mb-2">Total Tokens</p>
-          <p className="text-white text-3xl font-bold">{(totalTokens / 1_000_000).toFixed(2)}M</p>
-          <p className="text-white/30 text-xs mt-1">{totalMessages.toLocaleString()} messages</p>
+        {/* Stat Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <HeroStatCard
+            label="Total Tokens"
+            value={`${(totalTokens / 1_000_000).toFixed(1)}M`}
+            icon="🎯"
+            color="green"
+          />
+          <HeroStatCard
+            label="Total Cost"
+            value={`$${totalCost.toFixed(2)}`}
+            icon="💰"
+            color="amber"
+          />
+          <HeroStatCard
+            label="Avg/Day"
+            value={`$${avgPerDay.toFixed(2)}`}
+            icon="📈"
+            color="blue"
+          />
+          <HeroStatCard
+            label="Messages"
+            value={totalMessages.toLocaleString()}
+            icon="💬"
+            color="purple"
+          />
         </div>
-        
-        <div className="bg-white/[0.03] backdrop-blur-sm rounded-xl p-5 border border-white/[0.06]">
-          <p className="text-white/40 text-xs uppercase tracking-wider mb-2">Total Cost</p>
-          <p className="text-emerald-400 text-3xl font-bold">${totalCost.toFixed(2)}</p>
-          <p className="text-white/30 text-xs mt-1">Last {dateRange === '7d' ? '7' : dateRange === '30d' ? '30' : '90'} days</p>
-        </div>
-        
-        <div className="bg-white/[0.03] backdrop-blur-sm rounded-xl p-5 border border-white/[0.06]">
-          <p className="text-white/40 text-xs uppercase tracking-wider mb-2">Avg Cost/Day</p>
-          <p className="text-blue-400 text-3xl font-bold">
-            ${(totalCost / (dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90)).toFixed(2)}
-          </p>
-          <p className="text-white/30 text-xs mt-1">Projected: ${(totalCost / (dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90) * 30).toFixed(2)}/mo</p>
-        </div>
-      </div>
 
-      {/* Per-Agent Breakdown */}
-      <div className="mb-8">
-        <h2 className="text-white/50 text-[10px] uppercase tracking-wider font-medium mb-3">Per-Agent Usage</h2>
-        <div className="bg-white/[0.03] rounded-xl border border-white/[0.06] overflow-hidden">
-          {loading ? (
-            <div className="p-8 text-center text-white/50 text-sm">Loading usage data...</div>
-          ) : Object.keys(agentTotals).length === 0 ? (
-            <div className="p-8 text-center text-white/40 text-sm">No usage data yet</div>
+        {/* Stacked Area Chart */}
+        <div className="arcade-card p-5">
+          <h2 className="font-arcade text-[9px] text-white/30 mb-4 tracking-widest">
+            DAILY COST BY AGENT
+          </h2>
+          {chartData.length === 0 ? (
+            <div className="h-64 flex items-center justify-center">
+              <p className="font-arcade text-[10px] text-white/15">NO DATA</p>
+            </div>
           ) : (
-            <table className="w-full">
-              <thead className="bg-white/[0.02]">
-                <tr className="text-left text-xs text-white/40 uppercase tracking-wider">
-                  <th className="px-4 py-3 font-medium">Agent</th>
-                  <th className="px-4 py-3 font-medium">Model</th>
-                  <th className="px-4 py-3 font-medium text-right">Tokens</th>
-                  <th className="px-4 py-3 font-medium text-right">Messages</th>
-                  <th className="px-4 py-3 font-medium text-right">Cost</th>
-                  <th className="px-4 py-3 font-medium text-right">% of Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.04]">
-                {Object.entries(agentTotals)
-                  .sort((a, b) => b[1].cost - a[1].cost)
-                  .map(([agentId, data]) => {
-                    const agent = AGENT_MAP[agentId]
-                    const pct = (data.cost / totalCost * 100).toFixed(1)
-                    
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.25)', fontFamily: 'monospace' }}
+                    axisLine={{ stroke: 'rgba(255,255,255,0.06)' }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.25)', fontFamily: 'monospace' }}
+                    axisLine={{ stroke: 'rgba(255,255,255,0.06)' }}
+                    tickLine={false}
+                    tickFormatter={(v: number) => `$${v.toFixed(0)}`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#111118',
+                      border: '1px solid rgba(57,255,20,0.2)',
+                      borderRadius: '4px',
+                      fontFamily: 'monospace',
+                      fontSize: '11px',
+                    }}
+                    labelStyle={{ color: 'rgba(255,255,255,0.5)' }}
+                    formatter={(value: number, name: string) => {
+                      const agent = AGENT_MAP[name]
+                      return [`$${value.toFixed(2)}`, agent?.name || name]
+                    }}
+                  />
+                  {agentIds.map(id => {
+                    const color = AGENT_COLORS[id]?.neon || '#888'
                     return (
-                      <tr key={agentId} className="hover:bg-white/[0.02] transition-colors">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            {agent?.avatar ? (
-                              <img src={agent.avatar} alt={agent.name} className="w-6 h-6 rounded-full" />
-                            ) : (
-                              <span className="text-lg">{agent?.emoji || '🤖'}</span>
-                            )}
-                            <span className="text-white/80 font-medium text-sm">{agent?.name || agentId}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="text-white/50 text-xs font-mono">{data.lastModel}</span>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <span className="text-white/70 text-sm">{(data.tokens / 1_000_000).toFixed(2)}M</span>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <span className="text-white/70 text-sm">{data.messages.toLocaleString()}</span>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <span className="text-emerald-400 text-sm font-semibold">${data.cost.toFixed(2)}</span>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <span className="text-white/50 text-sm">{pct}%</span>
-                        </td>
-                      </tr>
+                      <Area
+                        key={id}
+                        type="monotone"
+                        dataKey={id}
+                        stackId="1"
+                        stroke={color}
+                        fill={color}
+                        fillOpacity={0.15}
+                        strokeWidth={1.5}
+                      />
                     )
                   })}
-              </tbody>
-            </table>
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </div>
-      </div>
 
-      {/* Daily Trend */}
-      <div>
-        <h2 className="text-white/50 text-[10px] uppercase tracking-wider font-medium mb-3">Daily Trend</h2>
-        <div className="bg-white/[0.03] rounded-xl border border-white/[0.06] p-6">
-          {sortedDates.length === 0 ? (
-            <p className="text-center text-white/40 text-sm">No data</p>
+        {/* Leaderboard */}
+        <div className="arcade-card overflow-hidden">
+          <div className="p-4 border-b border-arcade-border">
+            <h2 className="font-arcade text-[9px] text-white/30 tracking-widest">
+              🏆 LEADERBOARD
+            </h2>
+          </div>
+          {loading ? (
+            <div className="p-8 text-center">
+              <p className="font-arcade text-[10px] text-white/20 loading-text">CALCULATING</p>
+            </div>
+          ) : leaderboard.length === 0 ? (
+            <div className="p-8 text-center">
+              <p className="font-arcade text-[10px] text-white/15">NO SCORES YET</p>
+            </div>
           ) : (
-            <div className="space-y-2">
-              {sortedDates.slice(-14).map(date => {
-                const data = dailyTotals[date]
-                const maxCost = Math.max(...Object.values(dailyTotals).map(d => d.cost))
-                const barWidth = maxCost > 0 ? (data.cost / maxCost * 100) : 0
-                
+            <div className="divide-y divide-arcade-border">
+              {leaderboard.map(([agentId, data], i) => {
+                const agent = AGENT_MAP[agentId]
+                const color = AGENT_COLORS[agentId]?.neon || '#888'
+                const pct = totalCost > 0 ? (data.cost / totalCost * 100) : 0
+                const maxCost = leaderboard[0]?.[1]?.cost || 1
+                const barWidth = (data.cost / maxCost * 100)
+
                 return (
-                  <div key={date} className="flex items-center gap-3">
-                    <span className="text-white/40 text-xs font-mono w-24">{date}</span>
-                    <div className="flex-1 bg-white/[0.03] rounded-full h-6 relative overflow-hidden">
-                      <div
-                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-500/30 to-emerald-500/10 rounded-full"
-                        style={{ width: `${barWidth}%` }}
-                      />
-                      <span className="absolute inset-0 flex items-center px-3 text-xs text-white/60">
-                        {(data.tokens / 1_000_000).toFixed(2)}M tokens
+                  <div key={agentId} className="p-4 hover:bg-white/[0.02] transition-colors">
+                    <div className="flex items-center gap-4">
+                      {/* Rank */}
+                      <span className="font-arcade text-[10px] w-6 text-center" style={{
+                        color: i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : 'rgba(255,255,255,0.2)',
+                      }}>
+                        #{i + 1}
                       </span>
+
+                      {/* Agent */}
+                      <div className="flex items-center gap-2 w-28">
+                        <span className="text-lg">{agent?.emoji || '🤖'}</span>
+                        <span className="font-arcade text-[9px]" style={{ color }}>
+                          {(agent?.name || agentId).toUpperCase()}
+                        </span>
+                      </div>
+
+                      {/* Bar */}
+                      <div className="flex-1">
+                        <div className="h-4 bg-white/[0.03] rounded-none overflow-hidden">
+                          <div
+                            className="h-full transition-all duration-500"
+                            style={{
+                              width: `${barWidth}%`,
+                              backgroundColor: color + '40',
+                              borderRight: `2px solid ${color}`,
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Stats */}
+                      <div className="text-right w-32">
+                        <p className="font-arcade text-[10px]" style={{ color }}>
+                          ${data.cost.toFixed(2)}
+                        </p>
+                        <p className="text-white/20 text-[9px] font-mono">
+                          {(data.tokens / 1_000_000).toFixed(1)}M · {pct.toFixed(0)}%
+                        </p>
+                      </div>
                     </div>
-                    <span className="text-emerald-400 text-xs font-semibold w-16 text-right">
-                      ${data.cost.toFixed(2)}
-                    </span>
                   </div>
                 )
               })}
             </div>
           )}
+        </div>
+
+        {/* Model Breakdown */}
+        <div className="arcade-card p-5">
+          <h2 className="font-arcade text-[9px] text-white/30 mb-4 tracking-widest">
+            MODEL BREAKDOWN
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {(() => {
+              const modelTotals: Record<string, { tokens: number; cost: number }> = {}
+              for (const r of usage) {
+                const model = r.model.includes('opus') ? 'Opus 4.6' :
+                              r.model.includes('sonnet') ? 'Sonnet 4.5' :
+                              r.model.includes('haiku') ? 'Haiku' : r.model
+                if (!modelTotals[model]) modelTotals[model] = { tokens: 0, cost: 0 }
+                modelTotals[model].tokens += r.input_tokens + r.output_tokens
+                modelTotals[model].cost += r.total_cost
+              }
+              return Object.entries(modelTotals)
+                .sort((a, b) => b[1].cost - a[1].cost)
+                .map(([model, data]) => {
+                  const isOpus = model.includes('Opus')
+                  const color = isOpus ? '#B24BF3' : model.includes('Sonnet') ? '#00D4FF' : '#39FF14'
+                  return (
+                    <div key={model} className="flex items-center justify-between p-3 rounded"
+                      style={{ backgroundColor: color + '08', border: `1px solid ${color}15` }}
+                    >
+                      <div>
+                        <p className="font-arcade text-[9px]" style={{ color }}>{model}</p>
+                        <p className="text-white/20 text-[10px] font-mono mt-0.5">
+                          {(data.tokens / 1_000_000).toFixed(1)}M tokens
+                        </p>
+                      </div>
+                      <p className="font-arcade text-[11px]" style={{ color }}>
+                        ${data.cost.toFixed(2)}
+                      </p>
+                    </div>
+                  )
+                })
+            })()}
+          </div>
         </div>
       </div>
     </AppShell>
