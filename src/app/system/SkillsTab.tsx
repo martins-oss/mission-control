@@ -50,7 +50,7 @@ export default function SkillsTab() {
         {/* Header */}
         <div>
           <h1 className="font-arcade text-sm text-neon-green text-glow-green mb-2">
-            🧩 INVENTORY
+            🧩 SKILLS
           </h1>
           <p className="text-white/30 text-xs font-mono">
             {INSTALLED_SKILLS.length} SKILLS EQUIPPED · 700+ AVAILABLE ON CLAWHUB

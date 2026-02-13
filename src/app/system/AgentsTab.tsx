@@ -1,9 +1,10 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 
 import { StatusBadge } from '@/components/StatusBadge'
 import { useAgentStatus, deriveStatus, useTasks } from '@/lib/hooks'
-import { AGENTS, AGENT_COLORS, formatModel } from '@/lib/constants'
+import { AGENTS, MISSIONS, AGENT_COLORS, formatModel } from '@/lib/constants'
+import { supabase } from '@/lib/supabase'
 import type { AgentStatus } from '@/lib/supabase'
 
 function timeAgo(date: string | null): string {
@@ -18,24 +19,35 @@ function timeAgo(date: string | null): string {
   return `${Math.floor(hrs / 24)}d ago`
 }
 
-// Skills per agent (static for v1)
-const AGENT_SKILLS: Record<string, string[]> = {
-  main: ['github', 'notion', 'weather', 'brave-search', 'claude-code-wingman', 'session-logs'],
-  max:  ['github', 'supabase-rls-gen', 'claude-code-wingman', 'deepwiki', 'gemini', 'xai'],
-  dash: ['linkedin', 'multi-format-content', 'brave-search', 'tavily', 'supermemory'],
-  atlas: ['notion', 'brave-search', 'tavily', 'supermemory'],
-  amber: ['brave-search', 'tavily', 'web-search-plus', 'deepwiki', 'supermemory'],
-  pixel: ['weather', 'brave-search'],
+function useAgentSkills() {
+  const [skills, setSkills] = useState<Record<string, string[]>>({})
+  const [loading, setLoading] = useState(true)
+
+  const fetch = useCallback(async () => {
+    const { data } = await supabase
+      .from('agent_skills')
+      .select('agent_id, skill')
+      .order('skill')
+    if (data) {
+      const grouped: Record<string, string[]> = {}
+      data.forEach(row => {
+        if (!grouped[row.agent_id]) grouped[row.agent_id] = []
+        grouped[row.agent_id].push(row.skill)
+      })
+      setSkills(grouped)
+    }
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { fetch() }, [fetch])
+  return { skills, loading }
 }
 
-// Projects per agent
-const AGENT_PROJECTS: Record<string, string[]> = {
-  main: ['System', 'All'],
-  max:  ['DO IT', 'Mission Control', 'System'],
-  dash: ['Supliful', 'DO IT'],
-  atlas: ['Supliful'],
-  amber: ['System', 'Research'],
-  pixel: ['Pixel'],
+// Derive projects from MISSIONS constant
+function getAgentProjects(agentId: string): string[] {
+  return MISSIONS
+    .filter(m => m.owner === agentId)
+    .map(m => m.name)
 }
 
 function StatRow({ label, value, color }: { label: string; value: string | number; color?: string }) {
@@ -47,17 +59,17 @@ function StatRow({ label, value, color }: { label: string; value: string | numbe
   )
 }
 
-function AgentCard({ agent, status, taskCount }: {
+function AgentCard({ agent, status, taskCount, skills, projects }: {
   agent: typeof AGENTS[0]
   status: AgentStatus | null
   taskCount: number
+  skills: string[]
+  projects: string[]
 }) {
   const derived = status ? deriveStatus(status) : 'offline'
   const colors = AGENT_COLORS[agent.id] || AGENT_COLORS.max
   const model = status?.model || null
   const currentTask = status?.current_task || null
-  const skills = AGENT_SKILLS[agent.id] || []
-  const projects = AGENT_PROJECTS[agent.id] || []
 
   return (
     <div
@@ -161,6 +173,7 @@ function AgentCard({ agent, status, taskCount }: {
 export default function AgentsTab() {
   const { statuses, loading } = useAgentStatus()
   const { tasks } = useTasks()
+  const { skills: agentSkillsMap, loading: skillsLoading } = useAgentSkills()
 
   const statusMap = useMemo(() => {
     const m: Record<string, AgentStatus> = {}
@@ -204,6 +217,8 @@ export default function AgentsTab() {
                 agent={agent}
                 status={statusMap[agent.id] || null}
                 taskCount={taskCounts[agent.id] || 0}
+                skills={agentSkillsMap[agent.id] || []}
+                projects={getAgentProjects(agent.id)}
               />
             ))}
           </div>
