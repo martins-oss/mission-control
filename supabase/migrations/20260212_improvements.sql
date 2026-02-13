@@ -19,6 +19,10 @@ CREATE TABLE IF NOT EXISTS improvements (
 -- RLS policies
 ALTER TABLE improvements ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies (idempotent)
+DROP POLICY IF EXISTS "Improvements readable by authenticated supliful users" ON improvements;
+DROP POLICY IF EXISTS "Improvements writable by authenticated supliful users" ON improvements;
+
 CREATE POLICY "Improvements readable by authenticated supliful users"
   ON improvements FOR SELECT
   USING (auth.jwt()->>'email' LIKE '%@supliful.com');
@@ -28,9 +32,9 @@ CREATE POLICY "Improvements writable by authenticated supliful users"
   USING (auth.jwt()->>'email' LIKE '%@supliful.com');
 
 -- Indexes
-CREATE INDEX idx_improvements_status ON improvements(status);
-CREATE INDEX idx_improvements_owner ON improvements(owner);
-CREATE INDEX idx_improvements_created_at ON improvements(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_improvements_status ON improvements(status);
+CREATE INDEX IF NOT EXISTS idx_improvements_owner ON improvements(owner);
+CREATE INDEX IF NOT EXISTS idx_improvements_created_at ON improvements(created_at DESC);
 
 -- Updated at trigger
 CREATE OR REPLACE FUNCTION update_improvements_updated_at()
@@ -41,6 +45,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS improvements_updated_at ON improvements;
 CREATE TRIGGER improvements_updated_at
   BEFORE UPDATE ON improvements
   FOR EACH ROW

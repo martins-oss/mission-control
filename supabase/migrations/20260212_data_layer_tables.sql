@@ -55,6 +55,14 @@ ALTER TABLE agent_usage ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cron_jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_workspaces ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist (idempotent)
+DROP POLICY IF EXISTS "Allow authenticated users to read agent_usage" ON agent_usage;
+DROP POLICY IF EXISTS "Allow authenticated users to read cron_jobs" ON cron_jobs;
+DROP POLICY IF EXISTS "Allow authenticated users to read agent_workspaces" ON agent_workspaces;
+DROP POLICY IF EXISTS "Allow service role to write agent_usage" ON agent_usage;
+DROP POLICY IF EXISTS "Allow service role to write cron_jobs" ON cron_jobs;
+DROP POLICY IF EXISTS "Allow service role to write agent_workspaces" ON agent_workspaces;
+
 -- Allow authenticated users to read
 CREATE POLICY "Allow authenticated users to read agent_usage"
   ON agent_usage FOR SELECT
@@ -108,8 +116,8 @@ CREATE POLICY "Allow service role to write agent_workspaces"
   USING (true)
   WITH CHECK (true);
 
--- Indexes for common queries
-CREATE INDEX idx_agent_usage_agent_date ON agent_usage(agent_id, date DESC);
-CREATE INDEX idx_agent_usage_date ON agent_usage(date DESC);
-CREATE INDEX idx_cron_jobs_enabled ON cron_jobs(enabled, next_run);
-CREATE INDEX idx_agent_workspaces_agent ON agent_workspaces(agent_id);
+-- Indexes for common queries (create only if they don't exist)
+CREATE INDEX IF NOT EXISTS idx_agent_usage_agent_date ON agent_usage(agent_id, date DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_usage_date ON agent_usage(date DESC);
+CREATE INDEX IF NOT EXISTS idx_cron_jobs_enabled ON cron_jobs(enabled, next_run);
+CREATE INDEX IF NOT EXISTS idx_agent_workspaces_agent ON agent_workspaces(agent_id);

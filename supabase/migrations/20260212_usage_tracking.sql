@@ -36,6 +36,10 @@ CREATE TABLE IF NOT EXISTS session_usage (
 ALTER TABLE usage_snapshots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE session_usage ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies (idempotent)
+DROP POLICY IF EXISTS "Usage snapshots readable by authenticated supliful users" ON usage_snapshots;
+DROP POLICY IF EXISTS "Session usage readable by authenticated supliful users" ON session_usage;
+
 CREATE POLICY "Usage snapshots readable by authenticated supliful users"
   ON usage_snapshots FOR SELECT
   USING (auth.jwt()->>'email' LIKE '%@supliful.com');
@@ -45,10 +49,10 @@ CREATE POLICY "Session usage readable by authenticated supliful users"
   USING (auth.jwt()->>'email' LIKE '%@supliful.com');
 
 -- Indexes
-CREATE INDEX idx_usage_snapshots_agent_date ON usage_snapshots(agent_id, snapshot_date DESC);
-CREATE INDEX idx_usage_snapshots_date ON usage_snapshots(snapshot_date DESC);
-CREATE INDEX idx_session_usage_agent ON session_usage(agent_id);
-CREATE INDEX idx_session_usage_session ON session_usage(session_key);
+CREATE INDEX IF NOT EXISTS idx_usage_snapshots_agent_date ON usage_snapshots(agent_id, snapshot_date DESC);
+CREATE INDEX IF NOT EXISTS idx_usage_snapshots_date ON usage_snapshots(snapshot_date DESC);
+CREATE INDEX IF NOT EXISTS idx_session_usage_agent ON session_usage(agent_id);
+CREATE INDEX IF NOT EXISTS idx_session_usage_session ON session_usage(session_key);
 
 -- Updated at triggers
 CREATE OR REPLACE FUNCTION update_usage_snapshots_updated_at()
@@ -59,11 +63,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS usage_snapshots_updated_at ON usage_snapshots;
 CREATE TRIGGER usage_snapshots_updated_at
   BEFORE UPDATE ON usage_snapshots
   FOR EACH ROW
   EXECUTE FUNCTION update_usage_snapshots_updated_at();
 
+DROP TRIGGER IF EXISTS session_usage_updated_at ON session_usage;
 CREATE TRIGGER session_usage_updated_at
   BEFORE UPDATE ON session_usage
   FOR EACH ROW
