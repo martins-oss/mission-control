@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import AppShell from '@/components/AppShell'
+
 import { AGENT_COLORS, AGENTS } from '@/lib/constants'
 
 interface Skill {
@@ -37,7 +37,7 @@ const CATEGORIES: Record<string, { label: string; color: string; icon: string }>
   utility: { label: 'UTILITY',  color: '#888888', icon: '🔧' },
 }
 
-export default function SkillsPage() {
+export default function SkillsTab() {
   const [filter, setFilter] = useState<string>('all')
 
   const filtered = filter === 'all'
@@ -45,7 +45,7 @@ export default function SkillsPage() {
     : INSTALLED_SKILLS.filter(s => s.category === filter)
 
   return (
-    <AppShell>
+    <>
       <div className="space-y-6">
         {/* Header */}
         <div>
@@ -178,6 +178,6 @@ export default function SkillsPage() {
           </a>
         </div>
       </div>
-    </AppShell>
+    </>
   )
 }

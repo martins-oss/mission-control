@@ -6,13 +6,10 @@ import { useState, useEffect } from 'react'
 
 const NAV_ITEMS = [
   { href: '/',          label: 'HQ',       icon: '🕹️' },
-  { href: '/agents',    label: 'Agents',   icon: '👾' },
+  { href: '/missions',  label: 'Missions', icon: '⚡' },
+  { href: '/social',    label: 'Social',   icon: '📣' },
   { href: '/usage',     label: 'Usage',    icon: '📊' },
-  { href: '/tasks',     label: 'Tasks',    icon: '⚡' },
-  { href: '/cron',      label: 'Cron',     icon: '🔧' },
-  { href: '/ideas',     label: 'Ideas',    icon: '💡' },
-  { href: '/skills',    label: 'Skills',   icon: '🧩' },
-  { href: '/linkedin',  label: 'LinkedIn', icon: '📣' },
+  { href: '/system',    label: 'System',   icon: '🔧' },
 ]
 
 function SystemClock() {
@@ -25,8 +22,8 @@ function SystemClock() {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        timeZone: 'UTC',
-      }) + ' UTC')
+        timeZone: 'America/New_York',
+      }) + ' ET')
     }
     tick()
     const id = setInterval(tick, 1000)

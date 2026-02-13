@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import AppShell from '@/components/AppShell'
+
 import { useImprovements, type Improvement } from '@/lib/hooks'
 import { AGENT_MAP, STATUS_COLORS } from '@/lib/constants'
 
@@ -34,7 +34,7 @@ const STATUS_MAP: Record<string, { bg: string; text: string }> = {
 
 type Filter = 'all' | 'proposed' | 'approved' | 'implemented' | 'rejected'
 
-export default function ImprovementsPage() {
+export default function IdeasTab() {
   const { improvements, loading, refresh } = useImprovements()
   const [filter, setFilter] = useState<Filter>('all')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
@@ -85,7 +85,7 @@ export default function ImprovementsPage() {
   const proposedCount = improvements.filter(i => i.status === 'proposed').length
 
   return (
-    <AppShell>
+    <>
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="font-display text-4xl font-bold tracking-tight text-white">Improvements</h1>
@@ -270,21 +270,11 @@ export default function ImprovementsPage() {
                 </div>
               )}
 
-              {item.status === 'approved' && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleAction(item.id, 'implemented')}
-                    disabled={actionLoading === item.id}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-sm font-medium hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
-                  >
-                    Mark Implemented
-                  </button>
-                </div>
-              )}
+              {/* Approved items - agents implement, no manual button needed */}
             </div>
           ))}
         </div>
       )}
-    </AppShell>
+    </>
   )
 }

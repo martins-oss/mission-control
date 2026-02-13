@@ -1,5 +1,5 @@
 'use client'
-import AppShell from '@/components/AppShell'
+
 import { AGENTS } from '@/lib/constants'
 import { useAgentStatus } from '@/lib/hooks'
 import { SYSTEM_CONFIG } from '@/config/system'
@@ -35,11 +35,11 @@ const FOLDER_STRUCTURE = [
   { path: 'media/', type: 'dir', depth: 1, desc: 'Inbound/outbound media files' },
 ]
 
-export default function NetworkPage() {
+export default function ArchitectureTab() {
   const { statuses, loading } = useAgentStatus()
 
   return (
-    <AppShell>
+    <>
       <div className="mb-8">
         <h1 className="text-xl font-bold text-white">System Architecture</h1>
         <p className="text-white/40 text-sm mt-0.5">
@@ -214,6 +214,6 @@ export default function NetworkPage() {
           OpenClaw v{SYSTEM_CONFIG.version} · Node v22.22.0 · iris-gateway (DigitalOcean)
         </p>
       </div>
-    </AppShell>
+    </>
   )
 }

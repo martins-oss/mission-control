@@ -1,6 +1,6 @@
 'use client'
 import { useState, useMemo } from 'react'
-import AppShell from '@/components/AppShell'
+
 import { StatusBadge } from '@/components/StatusBadge'
 import { useAgentStatus, deriveStatus, useTasks } from '@/lib/hooks'
 import { AGENTS, AGENT_COLORS, formatModel } from '@/lib/constants'
@@ -158,7 +158,7 @@ function AgentCard({ agent, status, taskCount }: {
   )
 }
 
-export default function AgentsPage() {
+export default function AgentsTab() {
   const { statuses, loading } = useAgentStatus()
   const { tasks } = useTasks()
 
@@ -179,7 +179,7 @@ export default function AgentsPage() {
   }, [tasks])
 
   return (
-    <AppShell>
+    <>
       <div className="space-y-6">
         <div>
           <h1 className="font-arcade text-sm text-neon-green text-glow-green mb-2">
@@ -209,6 +209,6 @@ export default function AgentsPage() {
           </div>
         )}
       </div>
-    </AppShell>
+    </>
   )
 }

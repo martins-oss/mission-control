@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
-import { supabase, Task, Blocker, LinkedInPost, LinkedInAuth, AgentStatus } from './supabase'
+import { supabase, Task, Blocker, LinkedInPost, LinkedInAuth, AgentStatus, Quest } from './supabase'
 
 export function useAgentStatus() {
   const [statuses, setStatuses] = useState<AgentStatus[]>([])
@@ -41,6 +41,31 @@ function parseInterval(s: string): number {
   if (m[2] === 's') return n * 1000
   if (m[2] === 'm') return n * 60000
   return n * 3600000
+}
+
+export function useQuests(missionId?: string) {
+  const [quests, setQuests] = useState<Quest[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const fetch = useCallback(async () => {
+    let query = supabase
+      .from('quests')
+      .select('*')
+      .order('status', { ascending: true })
+      .order('updated_at', { ascending: false })
+    if (missionId) query = query.eq('mission_id', missionId)
+    const { data } = await query
+    if (data) setQuests(data)
+    setLoading(false)
+  }, [missionId])
+
+  useEffect(() => {
+    fetch()
+    const interval = setInterval(fetch, 30000)
+    return () => clearInterval(interval)
+  }, [fetch])
+
+  return { quests, loading, refresh: fetch }
 }
 
 export function useTasks() {

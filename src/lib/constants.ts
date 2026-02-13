@@ -1,4 +1,4 @@
-const AVATAR_BASE = 'https://vogtsynqcrnwexxlrsec.supabase.co/storage/v1/object/public/avatars'
+const AVATAR_BASE = '/avatars'
 
 export interface AgentMeta {
   id: string
@@ -49,13 +49,19 @@ export const AGENT_COLORS: Record<string, { neon: string; glow: string; tw: stri
   pixel:  { neon: '#FF6B6B', glow: 'glow-pink',    tw: 'text-neon-pink' },
 }
 
-export const PROJECTS = [
-  { id: 'doit', name: 'DO IT', description: 'Fitness app at dothework.fit', status: 'active', url: 'https://dothework.fit' },
-  { id: 'supliful', name: 'Supliful', description: 'Supplements business', status: 'active', url: null },
-  { id: 'mission-control', name: 'Mission Control', description: 'This dashboard', status: 'active', url: 'https://mission.dothework.fit' },
-  { id: 'system', name: 'System', description: 'Infrastructure & operations', status: 'active', url: null },
-  { id: 'pixel', name: 'Pixel', description: 'Creative projects', status: 'idle', url: null },
+export const MISSIONS = [
+  { id: 'doit', name: 'DO IT', description: 'Fitness app at dothework.fit', owner: 'max', url: 'https://dothework.fit' },
+  { id: 'supliful', name: 'Supliful', description: 'Supplements business', owner: 'atlas', url: null },
+  { id: 'mission-control', name: 'Mission Control', description: 'Agent operations dashboard', owner: 'main', url: 'https://mission.dothework.fit' },
+  { id: 'personal-brand', name: 'Personal Brand', description: 'Content & social presence', owner: 'dash', url: null },
+  { id: 'personal-assistant', name: 'Personal Assistant', description: 'Calendar, email, daily ops', owner: 'main', url: null },
+  { id: 'pixel', name: 'Pixel', description: 'Creative projects', owner: 'pixel', url: null },
+  { id: 'system', name: 'System', description: 'Infrastructure & improvements', owner: 'amber', url: null },
+  { id: 'whop-app', name: 'Whop App', description: 'Whop marketplace app', owner: 'max', url: null },
 ]
+
+// Legacy alias
+export const PROJECTS = MISSIONS
 
 /** Model pricing per 1M tokens (USD) */
 export const MODEL_PRICING: Record<string, { input: number; output: number; cacheRead: number; cacheWrite: number }> = {

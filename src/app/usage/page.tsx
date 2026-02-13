@@ -185,9 +185,9 @@ export default function UsagePage() {
                       fontSize: '11px',
                     }}
                     labelStyle={{ color: 'rgba(255,255,255,0.5)' }}
-                    formatter={(value: number, name: string) => {
-                      const agent = AGENT_MAP[name]
-                      return [`$${value.toFixed(2)}`, agent?.name || name]
+                    formatter={(value: any, name: any) => {
+                      const agent = AGENT_MAP[String(name)]
+                      return [`$${Number(value).toFixed(2)}`, agent?.name || String(name)]
                     }}
                   />
                   {agentIds.map(id => {

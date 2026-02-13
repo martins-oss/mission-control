@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
-import AppShell from '@/components/AppShell'
+
 import { HeroStatCard } from '@/components/HeroStatCard'
 import { supabase, CronJob } from '@/lib/supabase'
 import { AGENT_MAP, AGENT_COLORS } from '@/lib/constants'
@@ -68,7 +68,7 @@ function getJobHealthColor(job: CronJob): string {
   return '#39FF14' // green: healthy
 }
 
-export default function CronPage() {
+export default function CronTab() {
   const [jobs, setJobs] = useState<CronJob[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -93,7 +93,7 @@ export default function CronPage() {
   const healthy = enabled.filter(j => getJobHealthColor(j) === '#39FF14').length
 
   return (
-    <AppShell>
+    <>
       <div className="space-y-6">
         {/* Header */}
         <div>
@@ -217,6 +217,6 @@ export default function CronPage() {
           </div>
         )}
       </div>
-    </AppShell>
+    </>
   )
 }

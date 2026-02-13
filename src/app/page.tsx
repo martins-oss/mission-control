@@ -5,8 +5,8 @@ import AppShell from '@/components/AppShell'
 import { StatusBadge } from '@/components/StatusBadge'
 import { HeroStatCard } from '@/components/HeroStatCard'
 import { EmptyState, TaskCardSkeleton } from '@/components/EmptyState'
-import { useAgentStatus, deriveStatus, useTasks, useBlockers, useImprovements } from '@/lib/hooks'
-import { AGENTS, AGENT_MAP, AGENT_COLORS, STATUS_COLORS, formatModel } from '@/lib/constants'
+import { useAgentStatus, deriveStatus, useTasks, useBlockers, useImprovements, useQuests } from '@/lib/hooks'
+import { AGENTS, MISSIONS, AGENT_MAP, AGENT_COLORS, STATUS_COLORS, formatModel } from '@/lib/constants'
 import type { AgentStatus } from '@/lib/supabase'
 
 function timeAgo(date: string | null): string {
@@ -43,6 +43,7 @@ export default function Dashboard() {
   const { tasks, loading: tasksLoading } = useTasks()
   const { blockers, loading: blockersLoading } = useBlockers()
   const { improvements, loading: improvementsLoading, refresh: refreshImprovements } = useImprovements()
+  const { quests, loading: questsLoading } = useQuests()
 
   const handleImprovementAction = async (id: string, action: 'approve' | 'reject') => {
     try {
@@ -117,10 +118,10 @@ export default function Dashboard() {
           color={stats.blocked > 0 ? 'pink' : 'gray'}
         />
         <HeroStatCard
-          label="Backlog"
-          value={tasksLoading ? '—' : stats.backlog}
-          icon="📋"
-          color="gray"
+          label="Active Quests"
+          value={questsLoading ? '—' : quests.filter(q => q.status === 'active').length}
+          icon="⚔️"
+          color="purple"
         />
       </div>
 
@@ -139,7 +140,7 @@ export default function Dashboard() {
             return (
               <Link
                 key={agent.id}
-                href="/agents"
+                href="/system"
                 className={`
                   arcade-card p-4 group cursor-pointer
                   hover:border-opacity-40 transition-all duration-300
@@ -226,6 +227,45 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* ── Mission Overview ── */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-arcade text-[10px] text-white/50 tracking-widest">MISSIONS</h2>
+          <Link href="/missions" className="text-neon-green/60 hover:text-neon-green text-[10px] font-mono transition-colors">
+            VIEW ALL →
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {MISSIONS.filter(m => {
+            const mQuests = quests.filter(q => q.mission_id === m.id && q.status === 'active')
+            const mTasks = tasks.filter(t => t.mission_id === m.id && t.status !== 'done')
+            return mQuests.length > 0 || mTasks.length > 0
+          }).map(mission => {
+            const owner = AGENT_MAP[mission.owner]
+            const color = AGENT_COLORS[mission.owner]?.neon || '#39FF14'
+            const mQuests = quests.filter(q => q.mission_id === mission.id && q.status === 'active')
+            const mTasks = tasks.filter(t => t.mission_id === mission.id && t.status !== 'done')
+            return (
+              <Link
+                key={mission.id}
+                href="/missions"
+                className="arcade-card p-4 hover:border-opacity-40 transition-all"
+                style={{ borderColor: color + '15' }}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm">{owner?.emoji || '📁'}</span>
+                  <span className="font-arcade text-[9px] tracking-wider" style={{ color }}>{mission.name.toUpperCase()}</span>
+                </div>
+                <div className="flex items-center gap-3 text-[10px] font-mono text-white/30">
+                  <span>{mQuests.length} quest{mQuests.length !== 1 ? 's' : ''}</span>
+                  <span>{mTasks.length} task{mTasks.length !== 1 ? 's' : ''}</span>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      </div>
 
       {/* ── Tasks + Blockers Split ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

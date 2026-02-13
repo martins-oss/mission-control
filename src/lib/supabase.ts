@@ -18,6 +18,8 @@ export function getServiceClient() {
 export interface Task {
   id: string
   project: string
+  mission_id: string | null
+  quest_id: string | null
   task: string
   owner: string
   status: string
@@ -25,6 +27,7 @@ export interface Task {
   notes: string | null
   created_at: string
   updated_at: string
+  completed_at: string | null
 }
 
 export interface Blocker {
@@ -92,6 +95,20 @@ export interface Improvement {
   approved_by: string | null
   approved_at: string | null
   implemented_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Quest {
+  id: string
+  mission_id: string
+  title: string
+  description: string | null
+  status: 'proposed' | 'approved' | 'active' | 'paused' | 'completed' | 'cancelled'
+  size: 'S' | 'M' | 'L'
+  owner: string | null
+  approved_by: string | null
+  approved_at: string | null
   created_at: string
   updated_at: string
 }
