@@ -1,15 +1,8 @@
 'use client'
-
-import { AGENTS } from '@/lib/constants'
-import { useAgentStatus } from '@/lib/hooks'
+import { useAgentStatus, deriveStatus } from '@/lib/hooks'
+import { AGENTS, AGENT_COLORS } from '@/lib/constants'
+import { AGENT_CAPABILITIES, SERVICES } from '@/lib/network-data'
 import { SYSTEM_CONFIG } from '@/config/system'
-
-const SKILLS = [
-  'github', 'gemini', 'xai', 'gog', 'notion', 'weather',
-  'brave-search', 'tavily', 'deepwiki', 'linkedin', 'supermemory',
-  'claude-code-wingman', 'multi-format-content', 'web-search-plus',
-  'openclaw-auto-updater', 'supabase-schema-gen',
-]
 
 const FOLDER_STRUCTURE = [
   { path: '~/.openclaw/', type: 'dir', depth: 0, desc: 'OpenClaw root' },
@@ -28,192 +21,152 @@ const FOLDER_STRUCTURE = [
   { path: 'workspace-amber/', type: 'dir', depth: 1, desc: 'Amber workspace' },
   { path: 'workspace-pixel/', type: 'dir', depth: 1, desc: 'Pixel workspace' },
   { path: 'shared/', type: 'dir', depth: 1, desc: 'Cross-agent shared directory' },
-  { path: 'projects/', type: 'dir', depth: 2, desc: 'Project docs (doit, mission-control)' },
-  { path: 'drafts/', type: 'dir', depth: 2, desc: 'Agent draft outputs' },
-  { path: 'improvements/', type: 'dir', depth: 2, desc: 'Improvement proposals' },
+  { path: 'projects/', type: 'dir', depth: 2, desc: 'Mission folders (doit, supliful, mission-control, ...)' },
+  { path: 'meta/', type: 'dir', depth: 2, desc: 'Operating docs (TEAM.md, WORKFLOW.md, TRACKER.md)' },
   { path: 'skills/', type: 'dir', depth: 1, desc: 'Installed skill packages' },
   { path: 'media/', type: 'dir', depth: 1, desc: 'Inbound/outbound media files' },
 ]
 
 export default function ArchitectureTab() {
-  const { statuses, loading } = useAgentStatus()
+  const { statuses } = useAgentStatus()
 
   return (
-    <>
-      <div className="mb-8">
-        <h1 className="text-xl font-bold text-white">System Architecture</h1>
-        <p className="text-white/40 text-sm mt-0.5">
-          OpenClaw multi-agent setup on DigitalOcean VPS
-        </p>
-      </div>
-
+    <div className="space-y-6">
       {/* Layered Architecture */}
-      <div className="space-y-3 mb-12">
+      <div className="space-y-2">
 
         {/* Channel Layer */}
-        <div className="bg-white/[0.03] rounded-xl border border-white/[0.06] p-5">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-white/40 text-[10px] uppercase tracking-wider font-medium">Channel</p>
-          </div>
+        <div className="arcade-card p-5">
+          <p className="text-white/20 text-[9px] font-mono uppercase tracking-widest mb-3">CHANNEL</p>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
-              <span className="text-blue-400 text-sm">Telegram</span>
+            <div className="flex items-center gap-2 px-3 py-2 rounded" style={{ backgroundColor: '#00D4FF10', border: '1px solid #00D4FF20' }}>
+              <span style={{ color: '#00D4FF' }} className="text-sm font-mono">Telegram</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2 rounded" style={{ backgroundColor: '#39FF1410', border: '1px solid #39FF1420' }}>
+              <span style={{ color: '#39FF14' }} className="text-sm font-mono">WebChat</span>
             </div>
           </div>
         </div>
 
         {/* Connector */}
-        <div className="flex justify-center">
-          <div className="w-px h-4 bg-white/10" />
-        </div>
+        <div className="flex justify-center"><div className="w-px h-3 bg-neon-green/15" /></div>
 
         {/* Gateway Layer */}
-        <div className="bg-white/[0.03] rounded-xl border border-white/[0.06] p-5">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-white/40 text-[10px] uppercase tracking-wider font-medium">Gateway</p>
-          </div>
+        <div className="arcade-card p-5">
+          <p className="text-white/20 text-[9px] font-mono uppercase tracking-widest mb-2">GATEWAY</p>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-white text-sm font-medium">OpenClaw v{SYSTEM_CONFIG.version}</p>
-              <p className="text-white/40 text-xs font-mono mt-0.5">gateway.dothework.fit:18789</p>
+              <p className="text-neon-green text-sm font-mono">OpenClaw v{SYSTEM_CONFIG.version}</p>
+              <p className="text-white/25 text-[10px] font-mono mt-0.5">gateway.dothework.fit:{SYSTEM_CONFIG.gatewayPort}</p>
             </div>
             <div className="text-right">
-              <p className="text-white/40 text-xs">Host</p>
-              <p className="text-white/60 text-xs font-mono">iris-gateway (DigitalOcean)</p>
+              <p className="text-white/25 text-[10px] font-mono">Host</p>
+              <p className="text-white/40 text-[10px] font-mono">iris-gateway (DigitalOcean)</p>
             </div>
           </div>
         </div>
 
         {/* Connector */}
-        <div className="flex justify-center">
-          <div className="w-px h-4 bg-white/10" />
-        </div>
+        <div className="flex justify-center"><div className="w-px h-3 bg-neon-green/15" /></div>
 
         {/* Agents Layer */}
-        <div className="bg-white/[0.03] rounded-xl border border-white/[0.06] p-5">
+        <div className="arcade-card p-5">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-white/40 text-[10px] uppercase tracking-wider font-medium">Agents</p>
-            <p className="text-white/30 text-[10px]">{AGENTS.length} active</p>
+            <p className="text-white/20 text-[9px] font-mono uppercase tracking-widest">AGENTS</p>
+            <p className="text-white/15 text-[9px] font-mono">{AGENTS.length} configured</p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {AGENTS.map(agent => {
               const status = statuses.find(s => s.agent_id === agent.id)
-              const model = status?.model?.includes('opus') ? 'Opus 4.6' :
-                           status?.model?.includes('sonnet') ? 'Sonnet 4.5' :
-                           status?.model || '—'
-              
+              const derived = status ? deriveStatus(status) : 'offline'
+              const color = AGENT_COLORS[agent.id]?.neon || '#888'
+              const caps = AGENT_CAPABILITIES[agent.id]
+
               return (
-                <div
-                  key={agent.id}
-                  className="bg-white/[0.02] rounded-lg p-3 border border-white/[0.04]"
-                >
+                <div key={agent.id} className="p-3 rounded" style={{ backgroundColor: color + '08', border: `1px solid ${color}15` }}>
                   <div className="flex items-center gap-2 mb-2">
-                    <img src={agent.avatar} alt={agent.name} className="w-8 h-8 rounded-full" />
+                    <span className="text-lg">{agent.emoji}</span>
                     <div>
-                      <p className="text-white/80 text-sm font-medium leading-tight">{agent.name}</p>
-                      <p className="text-white/30 text-[10px]">{agent.role}</p>
+                      <p className="font-arcade text-[8px]" style={{ color }}>{agent.name.toUpperCase()}</p>
+                      <p className="text-white/20 text-[9px] font-mono">{agent.role}</p>
                     </div>
                   </div>
-                  <p className="text-white/40 text-[10px] font-mono">{model}</p>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Connector */}
-        <div className="flex justify-center">
-          <div className="w-px h-4 bg-white/10" />
-        </div>
-
-        {/* Skills Layer */}
-        <div className="bg-white/[0.03] rounded-xl border border-white/[0.06] p-5">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-white/40 text-[10px] uppercase tracking-wider font-medium">Skills</p>
-            <p className="text-white/30 text-[10px]">{SKILLS.length} installed</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {SKILLS.map(skill => (
-              <span
-                key={skill}
-                className="px-2.5 py-1 rounded-md bg-white/[0.04] border border-white/[0.06] text-white/50 text-[11px] font-mono"
-              >
-                {skill}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Connector */}
-        <div className="flex justify-center">
-          <div className="w-px h-4 bg-white/10" />
-        </div>
-
-        {/* Infrastructure Layer */}
-        <div className="bg-white/[0.03] rounded-xl border border-white/[0.06] p-5">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-white/40 text-[10px] uppercase tracking-wider font-medium">Infrastructure</p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { name: 'Supabase', desc: 'Database & Auth', color: 'emerald' },
-              { name: 'Vercel', desc: 'Web Deployment', color: 'white' },
-              { name: 'GitHub', desc: 'Source Control', color: 'purple' },
-              { name: 'Cloudflare', desc: 'DNS & Tunnels', color: 'orange' },
-            ].map(svc => (
-              <div
-                key={svc.name}
-                className="px-3 py-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04]"
-              >
-                <p className="text-white/70 text-sm font-medium">{svc.name}</p>
-                <p className="text-white/30 text-[10px] mt-0.5">{svc.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Folder Structure */}
-      <div>
-        <h2 className="text-white/50 text-[10px] uppercase tracking-wider font-medium mb-3">
-          Folder Structure
-        </h2>
-        <div className="bg-white/[0.03] rounded-xl border border-white/[0.06] p-5 font-mono text-xs">
-          <div className="space-y-0.5">
-            {FOLDER_STRUCTURE.map((item, i) => {
-              const indent = item.depth * 20
-              const isDir = item.type === 'dir'
-              
-              return (
-                <div
-                  key={i}
-                  className="flex items-baseline gap-2 py-0.5"
-                  style={{ paddingLeft: indent }}
-                >
-                  <span className={isDir ? 'text-blue-400/60' : 'text-white/30'}>
-                    {isDir ? '/' : ''}
-                  </span>
-                  <span className={`${isDir ? 'text-blue-400/80 font-medium' : 'text-white/50'}`}>
-                    {item.path}
-                  </span>
-                  {item.desc && (
-                    <span className="text-white/20 text-[10px] font-sans">
-                      {item.desc}
-                    </span>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <div className={`w-1.5 h-1.5 rounded-full ${derived === 'active' ? 'bg-neon-green animate-pulse' : derived === 'idle' ? 'bg-yellow-400' : 'bg-white/20'}`} />
+                    <span className="text-[9px] font-mono text-white/30">{derived}</span>
+                  </div>
+                  {caps && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {caps.tools.slice(0, 3).map(t => (
+                        <span key={t} className="text-[8px] font-mono px-1 py-0.5 rounded" style={{ backgroundColor: color + '10', color: color + '70' }}>
+                          {t}
+                        </span>
+                      ))}
+                      {caps.tools.length > 3 && (
+                        <span className="text-[8px] font-mono text-white/15">+{caps.tools.length - 3}</span>
+                      )}
+                    </div>
                   )}
                 </div>
               )
             })}
           </div>
         </div>
+
+        {/* Connector */}
+        <div className="flex justify-center"><div className="w-px h-3 bg-neon-green/15" /></div>
+
+        {/* Services Layer */}
+        <div className="arcade-card p-5">
+          <p className="text-white/20 text-[9px] font-mono uppercase tracking-widest mb-3">SERVICES</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {SERVICES.map(svc => {
+              const catColor = svc.category === 'infra' ? '#FFB800' : svc.category === 'api' ? '#00D4FF' : '#B24BF3'
+              return (
+                <div key={svc.id} className="p-3 rounded" style={{ backgroundColor: catColor + '06', border: `1px solid ${catColor}12` }}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm">{svc.icon}</span>
+                    <span className="text-white/50 text-[10px] font-mono">{svc.name}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {svc.connectedAgents.map(aid => {
+                      const a = AGENTS.find(a => a.id === aid)
+                      return (
+                        <span key={aid} className="text-[10px]" title={a?.name}>{a?.emoji}</span>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
       </div>
 
-      {/* Version */}
-      <div className="mt-6 text-center">
-        <p className="text-white/20 text-xs">
+      {/* Folder Structure */}
+      <div className="arcade-card p-5">
+        <h2 className="font-arcade text-[9px] text-white/30 mb-4 tracking-widest">FOLDER STRUCTURE</h2>
+        <div className="font-mono text-[11px] space-y-0.5">
+          {FOLDER_STRUCTURE.map((item, i) => {
+            const indent = item.depth * 20
+            const isDir = item.type === 'dir'
+            return (
+              <div key={i} className="flex items-baseline gap-2 py-0.5" style={{ paddingLeft: indent }}>
+                <span className={isDir ? 'text-neon-green/40' : 'text-white/20'}>{isDir ? '/' : ''}</span>
+                <span className={isDir ? 'text-neon-green/60 font-medium' : 'text-white/40'}>{item.path}</span>
+                {item.desc && <span className="text-white/15 text-[9px] font-sans">{item.desc}</span>}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Version Footer */}
+      <div className="text-center">
+        <p className="text-white/10 text-[10px] font-mono">
           OpenClaw v{SYSTEM_CONFIG.version} · Node v22.22.0 · iris-gateway (DigitalOcean)
         </p>
       </div>
-    </>
+    </div>
   )
 }

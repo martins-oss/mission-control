@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic'
 import AppShell from '@/components/AppShell'
 import { HeroStatCard } from '@/components/HeroStatCard'
 import { supabase, AgentUsage } from '@/lib/supabase'
-import { AGENT_MAP, AGENT_COLORS } from '@/lib/constants'
+import { AGENT_MAP, AGENT_COLORS, MISSIONS } from '@/lib/constants'
 
 // Dynamically import Recharts (client-only)
 const AreaChart = dynamic(() => import('recharts').then(m => m.AreaChart), { ssr: false })
@@ -282,6 +282,63 @@ export default function UsagePage() {
               })}
             </div>
           )}
+        </div>
+
+        {/* Cost by Mission */}
+        <div className="arcade-card p-5">
+          <h2 className="font-arcade text-[9px] text-white/30 mb-4 tracking-widest">
+            ⚡ COST BY MISSION
+          </h2>
+          <p className="text-white/15 text-[10px] font-mono mb-4">
+            Based on primary mission ownership. Agents working across missions attributed to their primary.
+          </p>
+          <div className="space-y-3">
+            {(() => {
+              // Map agent costs to their primary mission
+              const missionCosts: Record<string, { cost: number; agents: string[] }> = {}
+              for (const mission of MISSIONS) {
+                missionCosts[mission.id] = { cost: 0, agents: [] }
+              }
+              // Attribute each agent's cost to their primary mission
+              for (const [agentId, data] of Object.entries(agentTotals)) {
+                const mission = MISSIONS.find(m => m.owner === agentId)
+                if (mission) {
+                  missionCosts[mission.id].cost += data.cost
+                  missionCosts[mission.id].agents.push(agentId)
+                }
+              }
+              const maxCost = Math.max(...Object.values(missionCosts).map(m => m.cost), 1)
+              return Object.entries(missionCosts)
+                .filter(([, data]) => data.cost > 0)
+                .sort((a, b) => b[1].cost - a[1].cost)
+                .map(([missionId, data]) => {
+                  const mission = MISSIONS.find(m => m.id === missionId)
+                  const ownerColor = AGENT_COLORS[mission?.owner || '']?.neon || '#888'
+                  const barWidth = (data.cost / maxCost) * 100
+                  return (
+                    <div key={missionId} className="flex items-center gap-3">
+                      <div className="w-40 flex items-center gap-2">
+                        <span className="text-sm">{AGENT_MAP[mission?.owner || '']?.emoji || '📁'}</span>
+                        <span className="font-arcade text-[9px] truncate" style={{ color: ownerColor }}>
+                          {mission?.name.toUpperCase() || missionId}
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <div className="h-4 bg-white/[0.03] rounded-none overflow-hidden">
+                          <div
+                            className="h-full transition-all duration-500"
+                            style={{ width: `${barWidth}%`, backgroundColor: ownerColor + '40', borderRight: `2px solid ${ownerColor}` }}
+                          />
+                        </div>
+                      </div>
+                      <span className="font-arcade text-[10px] w-20 text-right" style={{ color: ownerColor }}>
+                        ${data.cost.toFixed(2)}
+                      </span>
+                    </div>
+                  )
+                })
+            })()}
+          </div>
         </div>
 
         {/* Model Breakdown */}
